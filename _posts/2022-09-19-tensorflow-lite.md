@@ -12,3 +12,7 @@ TensorFlow Lite is a set of tools that enables on-device machine learning by hel
 
 In this post I am going to show you how to build a mobile app using flutter and Tensorflow lite step-by-step.
 
+All the steps can be sumarized in the following image:
+
+![TF_Steps](/assets/img/1_Tz6RrVfs67RibZj2WyZEzg.png){: .mx-auto.d-block :}
+
