@@ -2,9 +2,9 @@
 layout: post
 title: Tensorflow Lite
 subtitle: How to enables on-device machine learning
-cover-img: /assets/img/lockup.svg
-thumbnail-img: /assets/img/lockup.svg
-share-img: /assets/img/lockup.svg
+cover-img: /assets/img/tensorflow_lite_flutter.png
+thumbnail-img: /assets/img/tensorflow_lite_flutter.png
+share-img:  /assets/img/tensorflow_lite_flutter.png
 tags: [tensorflow, mobile, machine learning, flutter]
 ---
 
