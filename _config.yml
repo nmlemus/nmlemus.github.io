@@ -22,9 +22,9 @@ author: Noel Moreno Lemus
 navbar-links:
   About Me: "aboutme"
   Resources:
-    - Beautiful Jekyll: "https://beautifuljekyll.com"
-    - Learn markdown: "https://www.markdowntutorial.com/"
-  Author's home: "https://deanattali.com"
+    - Curriculum Lattes: "http://lattes.cnpq.br/0845486662407480"
+  #  - Learn markdown: "https://www.markdowntutorial.com/"
+  # Author's home: "https://deanattali.com"
 
 ################
 # --- Logo --- #
