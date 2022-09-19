@@ -10,10 +10,10 @@
 ############################
 
 # Name of website
-title: My Website
+title: My Personal Blog
 
 # Your name to show in the footer
-author: Some Person
+author: Noel Moreno Lemus
 
 ###############################################
 # --- List of links in the navigation bar --- #
@@ -49,14 +49,14 @@ round-avatar: true
 # Select the social network links that you want to show in the footer.
 # Uncomment the links you want to show and add your information to each one.
 social-network-links:
-  email: "someone@example.com"
+  email: "nmlemus@gmail.com"
   rss: true  # remove this line if you don't want to show an RSS link at the bottom
-  facebook: deanattali
-  github: daattali
-  twitter: daattali
-  patreon: DeanAttali
-  youtube: c/daattali
-#  medium: yourname
+  facebook: nmlemus
+  github: nmlemus
+  twitter: nmlemus
+  patreon: nmlemus
+  youtube: c/nmlemus
+  medium: nmlemus
 #  reddit: yourname
 #  linkedin: daattali
 #  xing: yourname
@@ -94,7 +94,7 @@ share-links-active:
 
 # How to display the link to your website in the footer
 # Remove this if you don't want a link in the footer
-url-pretty: "MyWebsite.com"
+url-pretty: "nmlemus.github.io"
 
 # Excerpt word length - Truncate the excerpt of each post on the feed page to the specified number of words
 excerpt_length: 50
