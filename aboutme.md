@@ -4,13 +4,22 @@ title: About me
 subtitle: Why you'd want to go on a date with me
 ---
 
-My name is Inigo Montoya. I have the following qualities:
+20 years of experience, evolving from basic science and research to computer and information science. I have been working as:
 
-- I rock a great mustache
-- I'm extremely loyal to my family
+- project manager
+- team leader
+- researcher
+- professor
+- data scientis
+- software developer
 
-What else do you need?
+always in multidisciplinary teams, in areas such as:
 
-### My story
+- bioinformatics
+- oil and gas industry (seismic data interpretation)
+- marketing science
+- consumer goods
+- High-performance computing
+- Energy
 
-To be honest, I'm having some trouble remembering right now, so why don't you just watch [my movie](https://en.wikipedia.org/wiki/The_Princess_Bride_%28film%29) and it will answer **all** your questions.
+I can describe myself as a passionate learner who is always looking for a new challenge.
