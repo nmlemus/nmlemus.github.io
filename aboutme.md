@@ -4,22 +4,19 @@ title: About me
 subtitle: Why you'd want to go on a date with me
 ---
 
-20 years of experience, evolving from basic science and research to computer and information science. I have been working as:
+Data Science Professional with 20 years of experience working in different industry domains like:
 
-- project manager
-- team leader
-- researcher
-- professor
-- data scientis
-- software developer
-
-always in multidisciplinary teams, in areas such as:
-
-- bioinformatics
-- oil and gas industry (seismic data interpretation)
-- marketing science
-- consumer goods
-- High-performance computing
+- Life Sciences
+- Oil & Gas
+- BioTech (Drug Design, Bioinformatics, Clinical Trials)
+- Advertising
+- Retail
 - Energy
+- Logistic
+- eCommerce
+- IoT
+- Software Development in General
 
-I can describe myself as a passionate learner who is always looking for a new challenge.
+Solid background in Mathematics, Probability, Statistics, Programming, Machine Learning, deep learning, communication skills, and business acumen. I also have more than 15 years of experience in people management.
+
+I am a passionate learner who is always looking for a new challenge.
