@@ -12,7 +12,7 @@ TensorFlow Lite is a set of tools that enables on-device machine learning by hel
 
 # Why TensorFlow Lite
 
-$dist = \sqrt (a^2 + b^2)$
+$$dist = \sqrt {a^2 + b^2}$$
 
 where:
 - a: feature 1
