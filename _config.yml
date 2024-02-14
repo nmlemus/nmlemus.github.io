@@ -22,6 +22,7 @@ author: Noel Moreno Lemus
 navbar-links:
   About Me: "aboutme"
   Machine Learning: "https://nmlemus.github.io/ml/"
+  Python: "https://nmlemus.github.io/python/"
   Resources:
     - Curriculum Lattes: "http://lattes.cnpq.br/0845486662407480"
   #  - Learn markdown: "https://www.markdowntutorial.com/"
