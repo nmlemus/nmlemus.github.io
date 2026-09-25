@@ -5,39 +5,25 @@ date: 2026-09-25
 tags: [rag, retrieval, evaluation]
 ---
 
-<!-- Source: docs/superpowers/rag-tutorial-end-to-end.en.html (compiled 2026-09-23). -->
+Plugging in a vector store is the easy part of RAG. Whether it works depends on reading the documents properly, searching in a hybrid way, reranking, and measuring retrieval and answers separately.
 
-> **Key idea:** The value of RAG is not in "plugging in a vector store": it is in **reading documents properly**, **searching in a hybrid way**, **reranking** and, above all, **measuring** retrieval and answers separately.
+In Anthropic's tests (2024), adding context to chunks, BM25 and a reranker cut retrieval failures by 67%. Commercial legal RAG tools hallucinate 17–33% of the time (Stanford, 2024), and on Meta's CRAG benchmark (2024) the best industrial RAG systems answer without hallucinating only 63% of the time. For measuring all this, an LLM judge agrees with humans more than 80% of the time (Zheng et al., 2023).
 
-| Key number | Value | Source |
-|---|---|---|
-| Fewer retrieval failures | −67% | Context + BM25 + reranker (Anthropic, 2024) |
-| Hallucination in commercial legal RAG | 17–33% | Stanford, 2024 |
-| Answers without hallucination (best industrial RAG) | 63% | CRAG benchmark, Meta 2024 |
-| LLM judge ↔ human agreement | \>80% | Zheng et al., 2023 |
-
-## How to read this document
-
-> Compiled on: 2026-09-23.
-
-- **(preview)**: the feature exists, but the vendor still has it in *preview*. You can try it, but the vendor does not recommend it for production.
-- **†**: general-knowledge fact, **not verified** against official docs on 2026-09-23. Everything else was checked that day against the official documentation or the cited papers.
-- Acronyms are explained the first time they appear, and all of them are in the **Glossary** at the end.
-- **References**: works are cited in the body by name (e.g. *SPLADE*, *ColBERT*, *RAGAS*); the full author list, year and link are in the **References** at the end.
+I checked almost everything here against the official documentation and the cited papers on 23 September 2026. A few tool details marked † come from general experience and I did not re-check them. Features marked (preview) exist, but the vendor does not recommend them for production yet. Acronyms are spelled out the first time they appear and collected in the glossary at the end; papers are cited by name in the text (*SPLADE*, *ColBERT*, *RAGAS*), with authors, year and link in the references.
 
 ## Part I · Concepts
 
 ### 1. What RAG is, explained with a library
 
-**RAG** (*Retrieval-Augmented Generation*) means that, before answering, a language model searches your documents for information and answers based on what it found, citing the source.
+**RAG** (*Retrieval-Augmented Generation*) means that, before answering, a language model searches your documents and answers from what it found, citing the source.
 
-Why is it needed? The language model does not know your company's internal documents, its knowledge has a cutoff date, and it can make things up (what is called "hallucinating"). With RAG, the answer is grounded in specific, verifiable documents, and updating the knowledge does not require retraining the model.
+Why do you need it? A language model does not know your company's internal documents, its knowledge stops at a cutoff date, and it can make things up ("hallucinate"). With RAG the answer rests on specific documents that anyone can check, and updating the knowledge does not require retraining the model.
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:965px" viewBox="0 0 1440 320"  xmlns="http://www.w3.org/2000/svg" role="img"
          aria-labelledby="rag-library-title rag-library-desc">
       <title id="rag-library-title">RAG explained as a library</title>
-      <desc id="rag-library-desc">A left-to-right pipeline of seven stages — documents, chunks, index, search, reranker, model, and evaluation — mapped to a library metaphor: a library of documents is cut into index cards, catalogued, searched by a librarian, filtered by an expert reranker, written up by a model, and graded by a teacher, with the generation step highlighted as the focal handoff.</desc>
+      <desc id="rag-library-desc">A left-to-right pipeline of seven stages (documents, chunks, index, search, reranker, model and evaluation) mapped to a library metaphor: a library of documents is cut into index cards, catalogued, searched by a librarian, filtered by an expert reranker, written up by a model, and graded by a teacher, with the generation step highlighted.</desc>
       <defs>
         <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
           <polygon points="0 0, 8 3, 0 6" fill="#003da5"/></marker>
@@ -50,7 +36,7 @@ Why is it needed? The language model does not know your company's internal docum
       <line x1="400"  y1="184" x2="440"  y2="184" stroke="#003da5" stroke-width="1" marker-end="url(#arrow)"/>
       <line x1="600"  y1="184" x2="640"  y2="184" stroke="#003da5" stroke-width="1" marker-end="url(#arrow)"/>
       <line x1="800"  y1="184" x2="840"  y2="184" stroke="#003da5" stroke-width="1" marker-end="url(#arrow)"/>
-      <!-- focal handoff: reranker -> model (accent) -->
+      <!-- highlighted handoff: reranker -> model (accent) -->
       <line x1="1000" y1="184" x2="1040" y2="184" stroke="#fedb00" stroke-width="1.2" marker-end="url(#arrow-accent)"/>
       <line x1="1200" y1="184" x2="1240" y2="184" stroke="#003da5" stroke-width="1" marker-end="url(#arrow)"/>
       <!-- ============ STAGE 1 · Library (documents) ============ -->
@@ -58,7 +44,6 @@ Why is it needed? The language model does not know your company's internal docum
       <text x="30" y="107" font-family="Meslo, Menlo, monospace" font-size="9" fill="#000000" text-anchor="middle">1</text>
       <rect x="40" y="120" width="160" height="128" rx="6" fill="#ffffff"/>
       <rect x="40" y="120" width="160" height="128" rx="6" fill="#ffffff" stroke="#000000" stroke-width="1"/>
-      <text x="120" y="156" font-size="26" text-anchor="middle">📚</text>
       <text x="120" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Library</text>
       <text x="120" y="200" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">documents</text>
       <text x="120" y="216" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">Your source files</text>
@@ -68,7 +53,6 @@ Why is it needed? The language model does not know your company's internal docum
       <text x="240" y="107" font-family="Meslo, Menlo, monospace" font-size="9" fill="#000000" text-anchor="middle">2</text>
       <rect x="240" y="120" width="160" height="128" rx="6" fill="#ffffff"/>
       <rect x="240" y="120" width="160" height="128" rx="6" fill="#ffffff" stroke="#000000" stroke-width="1"/>
-      <text x="320" y="156" font-size="26" text-anchor="middle">✂️</text>
       <text x="320" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Index cards</text>
       <text x="320" y="200" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">chunks</text>
       <text x="320" y="216" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">Cut the documents</text>
@@ -78,7 +62,6 @@ Why is it needed? The language model does not know your company's internal docum
       <text x="440" y="107" font-family="Meslo, Menlo, monospace" font-size="9" fill="#000000" text-anchor="middle">3</text>
       <rect x="440" y="120" width="160" height="128" rx="6" fill="#ffffff"/>
       <rect x="440" y="120" width="160" height="128" rx="6" fill="#ffffff" stroke="#000000" stroke-width="1"/>
-      <text x="520" y="156" font-size="26" text-anchor="middle">🗂️</text>
       <text x="520" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Catalog</text>
       <text x="520" y="200" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">index</text>
       <text x="520" y="216" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">File each card by</text>
@@ -88,7 +71,6 @@ Why is it needed? The language model does not know your company's internal docum
       <text x="640" y="107" font-family="Meslo, Menlo, monospace" font-size="9" fill="#000000" text-anchor="middle">4</text>
       <rect x="640" y="120" width="160" height="128" rx="6" fill="#ffffff"/>
       <rect x="640" y="120" width="160" height="128" rx="6" fill="#ffffff" stroke="#000000" stroke-width="1"/>
-      <text x="720" y="156" font-size="26" text-anchor="middle">🔎</text>
       <text x="720" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Librarian</text>
       <text x="720" y="200" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">search</text>
       <text x="720" y="216" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">Brings ~50</text>
@@ -98,17 +80,15 @@ Why is it needed? The language model does not know your company's internal docum
       <text x="840" y="107" font-family="Meslo, Menlo, monospace" font-size="9" fill="#000000" text-anchor="middle">5</text>
       <rect x="840" y="120" width="160" height="128" rx="6" fill="#ffffff"/>
       <rect x="840" y="120" width="160" height="128" rx="6" fill="#ffffff" stroke="#000000" stroke-width="1"/>
-      <text x="920" y="156" font-size="26" text-anchor="middle">🧐</text>
       <text x="920" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Expert</text>
       <text x="920" y="200" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">reranker</text>
       <text x="920" y="216" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">Keeps the</text>
       <text x="920" y="228" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">best 5</text>
-      <!-- ============ STAGE 6 · Writer (model) · FOCAL ============ -->
+      <!-- ============ STAGE 6 · Writer (model) · HIGHLIGHT ============ -->
       <rect x="1030" y="96" width="20" height="16" rx="8" fill="rgba(254,219,0,0.20)"/>
       <text x="1040" y="107" font-family="Meslo, Menlo, monospace" font-size="9" fill="#000000" text-anchor="middle">6</text>
       <rect x="1040" y="120" width="160" height="128" rx="6" fill="#ffffff"/>
       <rect x="1040" y="120" width="160" height="128" rx="6" fill="rgba(254,219,0,0.14)" stroke="#fedb00" stroke-width="1.2"/>
-      <text x="1120" y="156" font-size="26" text-anchor="middle">✍️</text>
       <text x="1120" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Writer</text>
       <text x="1120" y="200" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">model</text>
       <text x="1120" y="216" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">Writes the answer</text>
@@ -118,7 +98,6 @@ Why is it needed? The language model does not know your company's internal docum
       <text x="1240" y="107" font-family="Meslo, Menlo, monospace" font-size="9" fill="#000000" text-anchor="middle">7</text>
       <rect x="1240" y="120" width="160" height="128" rx="6" fill="#ffffff"/>
       <rect x="1240" y="120" width="160" height="128" rx="6" fill="#ffffff" stroke="#000000" stroke-width="1"/>
-      <text x="1320" y="156" font-size="26" text-anchor="middle">👩‍🏫</text>
       <text x="1320" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Teacher</text>
       <text x="1320" y="200" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">evaluation</text>
       <text x="1320" y="216" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">Grades: retrieved</text>
@@ -129,19 +108,19 @@ Why is it needed? The language model does not know your company's internal docum
       <rect x="132" y="292" width="12" height="12" rx="2" fill="#ffffff" stroke="#000000" stroke-width="1"/>
       <text x="152" y="301" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Retrieval stages (ingest → search → rerank)</text>
       <rect x="470" y="292" width="12" height="12" rx="2" fill="rgba(254,219,0,0.14)" stroke="#fedb00" stroke-width="1.2"/>
-      <text x="490" y="301" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Generation — focal handoff</text>
+      <text x="490" y="301" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Generation (main step)</text>
       <line x1="720" y1="298" x2="744" y2="298" stroke="#003da5" stroke-width="1" marker-end="url(#arrow)"/>
       <text x="752" y="301" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Data hand-off between stages</text>
     </svg></div><figcaption>RAG as a library: documents → chunks → index → search → reranker → model → evaluation</figcaption></figure>
 
 
-The evolution of the field is usually described in three stages (Gao et al., 2023/24):
+Gao et al. (2023/24) describe the field's evolution in three stages:
 
 | Stage | Idea |
 |----|----|
-| **Naive RAG** | Index → retrieve the top k → paste them into the prompt |
-| **Advanced RAG** | Improve **before** searching (rewrite the question, chunk better) and **after** (rerank, compress) |
-| **Modular RAG** | Interchangeable pieces; adaptive, iterative and agentic flows |
+| Naive RAG | Index → retrieve the top k → paste them into the prompt |
+| Advanced RAG | Improve things before searching (rewrite the question, chunk better) and after (rerank, compress) |
+| Modular RAG | Interchangeable pieces; adaptive, iterative and agentic flows |
 
 ### 2. The three circuits of a production RAG system
 
@@ -219,7 +198,7 @@ The evolution of the field is usually described in three stages (Gao et al., 202
 <text x="40" y="500" fill="#4f5d75" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.14em">LEGEND</text>
 <rect x="112" y="492" width="20" height="12" rx="2" fill="#ffffff"/>
 <rect x="112" y="492" width="20" height="12" rx="2" fill="rgba(235,108,54,0.14)" stroke="#eb6c36" stroke-width="1"/>
-<text x="144" y="500" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">FOCAL</text>
+<text x="144" y="500" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">HIGHLIGHT</text>
 <rect x="200" y="492" width="20" height="12" rx="2" fill="#ffffff"/>
 <rect x="200" y="492" width="20" height="12" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
 <text x="232" y="500" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">PROCESS</text>
@@ -240,7 +219,7 @@ The evolution of the field is usually described in three stages (Gao et al., 202
 
 ### 3. Reading the document properly (parsing)
 
-This is the step with the most impact and the one most often neglected. If the PDF is converted to "plain text", the headings are lost, tables get scrambled and each chunk loses its context.
+Parsing has more impact than any other step, and it is the one teams neglect most. Convert a PDF to "plain text" and you lose the headings, the tables get scrambled, and each chunk loses its context.
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:670px" viewBox="0 0 1000 340"  xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rag-parsing-title rag-parsing-desc">
@@ -257,7 +236,7 @@ This is the step with the most impact and the one most often neglected. If the P
   <!-- LEFT: plain-text extraction (structure lost) -->
   <rect x="40" y="72" width="380" height="216" rx="6" fill="#ffffff"/>
   <rect x="40" y="72" width="380" height="216" rx="6" fill="rgba(0,0,0,0.03)" stroke="rgba(0,0,0,0.30)" stroke-width="1"/>
-  <text x="60" y="100" font-family="Meslo, Menlo, monospace" font-size="8" fill="#003da5" letter-spacing="0.14em">❌ PLAIN-TEXT EXTRACTION</text>
+  <text x="60" y="100" font-family="Meslo, Menlo, monospace" font-size="8" fill="#003da5" letter-spacing="0.14em">PLAIN-TEXT EXTRACTION</text>
   <text x="60" y="120" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#000000">Original PDF, flattened</text>
   <text x="60" y="150" font-family="Meslo, Menlo, monospace" font-size="10" fill="#4d6fa8">REMOTE WORK POLICY 3.</text>
   <text x="60" y="166" font-family="Meslo, Menlo, monospace" font-size="10" fill="#4d6fa8">Eligibility Role Days Ctry</text>
@@ -265,10 +244,10 @@ This is the step with the most impact and the one most often neglected. If the P
   <text x="60" y="222" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5">• headings lost</text>
   <text x="60" y="240" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5">• table scrambled into a line</text>
   <text x="60" y="258" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5">• each chunk loses its context</text>
-  <!-- RIGHT: structure-aware parsing (focal, accent) -->
+  <!-- RIGHT: structure-aware parsing (highlighted, accent) -->
   <rect x="580" y="72" width="380" height="216" rx="6" fill="#ffffff"/>
   <rect x="580" y="72" width="380" height="216" rx="6" fill="rgba(254,219,0,0.14)" stroke="#fedb00" stroke-width="1.4"/>
-  <text x="600" y="100" font-family="Meslo, Menlo, monospace" font-size="8" fill="#003da5" letter-spacing="0.12em">✅ STRUCTURE-AWARE → MARKDOWN</text>
+  <text x="600" y="100" font-family="Meslo, Menlo, monospace" font-size="8" fill="#003da5" letter-spacing="0.12em">STRUCTURE-AWARE → MARKDOWN</text>
   <text x="600" y="120" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#000000">Headings and table preserved</text>
   <text x="600" y="146" font-family="Meslo, Menlo, monospace" font-size="10" fill="#000000"># Remote Work Policy<tspan fill="#4d6fa8">   ← h1</tspan></text>
   <text x="600" y="162" font-family="Meslo, Menlo, monospace" font-size="10" fill="#000000">## 3. Eligibility by country<tspan fill="#4d6fa8"> ← h2</tspan></text>
@@ -280,35 +259,35 @@ This is the step with the most impact and the one most often neglected. If the P
 </svg></div><figcaption>Parsing: plain-text extraction loses structure; structure-aware parsing keeps headings and tables</figcaption></figure>
 
 
-Evidence:
+The studies agree on this:
 
-- **ColPali** (ICLR 2025): its authors "typically find that optimizing the ingestion pipeline yields much greater improvements than optimizing the embedding model". ColPali indexes **page images** directly, without extracting text or chunking, and scored 81.3 nDCG@5 versus ~65–67 for parsing pipelines on the ViDoRe benchmark.
-- **Unstructured, FinanceBench (2024)**: chunking by document elements (headings, tables) achieved 53.2% accuracy versus 48.2% with fixed 512-token chunks, while using half as many chunks.
-- Turkish-language study (2026): layout-aware chunking helps much more on documents with tables than on text-only documents.
+- The ColPali authors (ICLR 2025) "typically find that optimizing the ingestion pipeline yields much greater improvements than optimizing the embedding model". ColPali itself skips text extraction and chunking and indexes page images directly; on the ViDoRe benchmark it scored 81.3 nDCG@5 against ~65–67 for parsing pipelines.
+- In Unstructured's FinanceBench study (2024), chunking by document elements (headings, tables) reached 53.2% accuracy versus 48.2% with fixed 512-token chunks, and used half as many chunks.
+- A Turkish-language study (2026) found that layout-aware chunking helps much more on documents with tables than on text-only documents.
 
-Tools: Document Layout skill (Azure), Document AI Layout Parser (Google), Docling (IBM, open source). See the comparison in section 22.
+The usual tools are the Document Layout skill (Azure), Document AI Layout Parser (Google) and Docling (IBM, open source). Section 22 compares them.
 
 ### 4. Chunking
 
-**What it is:** splitting each document into small pieces (*chunks*) that are indexed separately.
+Chunking splits each document into small pieces (*chunks*) that are indexed separately.
 
 #### 4.1 The strategies
 
 | Strategy | How it splits | Cost |
 |----|----|----|
-| **Fixed size** | Every N tokens, with optional overlap | Minimal |
-| **Recursive** | Tries to split by paragraph, then by line, then by sentence… | Minimal |
-| **By structure / page** | By the document's sections, headings or pages | Low (requires good parsing) |
-| **Semantic** | Splits where the meaning changes between sentences, measured with embeddings | Medium |
-| **LLM-based ("agentic")** | A model decides where to split | High |
-| **Propositions** | A model rewrites the text into atomic facts | High |
+| Fixed size | Every N tokens, with optional overlap | Minimal |
+| Recursive | Tries to split by paragraph, then by line, then by sentence… | Minimal |
+| By structure / page | By the document's sections, headings or pages | Low (requires good parsing) |
+| Semantic | Splits where the meaning changes between sentences, measured with embeddings | Medium |
+| LLM-based ("agentic") | A model decides where to split | High |
+| Propositions | A model rewrites the text into atomic facts | High |
 
 #### 4.2 What the evidence says: semantic chunking is overrated
 
-- **Vectara (2024), "Is Semantic Chunking Worth the Computational Cost?"**: "the computational costs associated with semantic chunking are not justified by consistent performance gains". On all 4 real-document datasets, fixed-size chunking won (e.g. HotpotQA, F1@5: 90.59 fixed vs 87.37 semantic). The embedding model mattered more than the chunking.
-- **Chroma (2024)**: the chunking strategy changes recall by up to 9%. The default semantic chunker came in slightly below average (83.6% recall), while a recursive 200-token chunker with no overlap reached 88.1%, close to the best (91.9%, using a language model, and much more expensive).
-- **NVIDIA (June 2025)**: **page-level** chunking gave the best average accuracy (0.648) and the lowest variance across datasets.
-- **Biomedicine (2026)**: semantic chunking gained +8.4 F1 points on one dataset, but on others fixed-size chunking "remains competitive or better". It depends on the domain.
+- Vectara (2024) asked "Is Semantic Chunking Worth the Computational Cost?" and concluded that "the computational costs associated with semantic chunking are not justified by consistent performance gains". Fixed-size chunking won on all 4 real-document datasets (on HotpotQA, for example, F1@5 was 90.59 fixed vs 87.37 semantic). The embedding model mattered more than the chunking.
+- Chroma (2024) found that the chunking strategy moves recall by up to 9%. Its default semantic chunker came in slightly below average (83.6% recall), while a recursive 200-token chunker with no overlap reached 88.1%. The best result (91.9%) used a language model and cost much more.
+- NVIDIA (June 2025) got the best average accuracy (0.648) and the lowest variance across datasets with **page-level** chunking.
+- In biomedicine (2026), semantic chunking gained +8.4 F1 points on one dataset, but on the others fixed-size chunking "remains competitive or better". It depends on the domain.
 
 #### 4.3 What does work: adding context to each chunk
 
@@ -319,8 +298,8 @@ Tools: Document Layout skill (Azure), Document AI Layout Parser (Google), Doclin
 </colgroup>
 <thead>
 <tr>
-<th>❌ Chunk without context</th>
-<th>✅ Chunk with context</th>
+<th>Chunk without context</th>
+<th>Chunk with context</th>
 </tr>
 </thead>
 <tbody>
@@ -333,19 +312,21 @@ Tools: Document Layout skill (Azure), Document AI Layout Parser (Google), Doclin
 </tbody>
 </table>
 
-- **Anthropic, Contextual Retrieval (Sep 2024)**: a model generates 50–100 tokens of context that are prepended to each chunk. Retrieval failure rate (within the top 20 results), from a 5.7% baseline:
-  - Context in the vectors only: 3.7% (**−35%**)
-  - Context in the vectors **and** in BM25: 2.9% (**−49%**)
-  - All of the above **plus a reranker**: 1.9% (**−67%**)
-  - One-time cost: ~\$1.02 per million document tokens, using prompt caching.
-  - ⚠️ All three percentages are reductions relative to the baseline (5.7%). The step attributable to the reranker is from 2.9% to 1.9%.
-- **Late chunking (Jina, 2024)**: first the embedding of the whole document is computed and only then is it chunked, so each vector "knows" which document it comes from. Improves nDCG@10 by +2.7% to +3.6% without retraining.
+Anthropic's **Contextual Retrieval** (Sep 2024) has a model write 50–100 tokens of context and prepends them to each chunk. Measured as the retrieval failure rate within the top 20 results, starting from a 5.7% baseline:
+
+- context in the vectors only: 3.7% (−35%)
+- context in the vectors and in BM25: 2.9% (−49%)
+- all of the above plus a reranker: 1.9% (−67%)
+
+The one-time cost is ~\$1.02 per million document tokens with prompt caching. Be careful when you quote these numbers: all three percentages are reductions relative to the 5.7% baseline, so the reranker's own contribution is the step from 2.9% to 1.9%.
+
+Late chunking (Jina, 2024) computes the embedding of the whole document first and only then splits it, so each vector "knows" which document it comes from. It improves nDCG@10 by +2.7% to +3.6% without retraining.
 
 #### 4.4 Starting sizes
 
-- Short factual questions: 64–128 tokens. Questions that need broad context: 512–1024 tokens (Bhat et al., 2025).
-- Azure recommends starting with **512 tokens and 25% overlap**, and adding the document title to the middle chunks.
-- **Golden rule:** start with recursive or section/page chunking of 256–512 tokens, don't split tables, add context, and **tune by measuring** (Part VI).
+Bhat et al. (2025) suggest 64–128 tokens for short factual questions and 512–1024 tokens for questions that need broad context. Azure recommends starting with 512 tokens and 25% overlap, and adding the document title to the middle chunks.
+
+A reasonable default: start with recursive or section/page chunking of 256–512 tokens, don't split tables, add context, and tune by measuring (Part VI).
 
 ### 5. Turning text into vectors (embeddings)
 
@@ -366,7 +347,7 @@ An **embedding** is a list of numbers that represents the meaning of a text. Tex
   <line x1="232" y1="196" x2="360" y2="164" stroke="#003da5" stroke-width="1" stroke-dasharray="4,3"/>
   <rect x="252" y="168" width="80" height="14" rx="2" fill="#ffffff"/>
   <text x="292" y="178" font-family="Meslo, Menlo, monospace" font-size="9" fill="#4d6fa8" text-anchor="middle">close</text>
-  <!-- point 1: cheap laptop (focal accent) -->
+  <!-- point 1: cheap laptop (highlighted accent) -->
   <circle cx="232" cy="196" r="9" fill="rgba(254,219,0,0.30)" stroke="#fedb00" stroke-width="1.6"/>
   <text x="232" y="228" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#000000" text-anchor="middle">"cheap laptop"</text>
   <!-- point 2: inexpensive notebook -->
@@ -381,32 +362,29 @@ An **embedding** is a list of numbers that represents the meaning of a text. Tex
   <!-- legend -->
   <line x1="40" y1="344" x2="780" y2="344" stroke="rgba(0,0,0,0.10)" stroke-width="0.8"/>
   <circle cx="52" cy="362" r="6" fill="rgba(254,219,0,0.30)" stroke="#fedb00" stroke-width="1.4"/>
-  <text x="66" y="365" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Similar meaning — near neighbours</text>
+  <text x="66" y="365" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Similar meaning, near neighbours</text>
   <circle cx="360" cy="362" r="6" fill="rgba(0,0,0,0.05)" stroke="#4d6fa8" stroke-width="1.4"/>
-  <text x="374" y="365" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Unrelated — far away, even if it shares words</text>
+  <text x="374" y="365" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Unrelated, far away, even if it shares words</text>
 </svg></div><figcaption>Embeddings place similar meanings close together and unrelated text far apart</figcaption></figure>
 
 
 | Type | What it is | Examples |
 |----|----|----|
-| **Dense** | Hundreds or thousands of numbers, all with a value | text-embedding-3 (OpenAI/Azure), gemini-embedding-001, Qwen3-Embedding, BGE-M3 |
-| **Learned sparse** | List of terms (almost all zero) with weights, expanded with related terms | SPLADE, ELSER (Elastic), BGE-M3 sparse mode |
-| **Multi-vector** | One vector per token; compared token by token | ColBERT, ColPali |
+| Dense | Hundreds or thousands of numbers, all with a value | text-embedding-3 (OpenAI/Azure), gemini-embedding-001, Qwen3-Embedding, BGE-M3 |
+| Learned sparse | List of terms (almost all zero) with weights, expanded with related terms | SPLADE, ELSER (Elastic), BGE-M3 sparse mode |
+| Multi-vector | One vector per token; compared token by token | ColBERT, ColPali |
 
-Tips:
-
-- **Measure on your own data.** Public leaderboards (such as MTEB) change every month and don't always reflect your domain.
-- **Pin the model version.** If you mix vectors from different models, searches stop making sense.
+Measure on your own data. Public leaderboards (such as MTEB) change every month and don't always reflect your domain. And pin the model version: if you mix vectors from different models, searches stop making sense.
 
 ### 6. Index and permissions
 
-The **index** stores each chunk with its text, its vector and its **metadata**:
+The index stores each chunk with its text, its vector and its metadata:
 
 | Field(s) in the index              | Purpose                          |
 |------------------------------------|----------------------------------|
 | `id, content, content_vector`      | the chunk text and its embedding |
 | `title, section, page, source_url` | where it came from               |
-| `allowed_groups` 🔒                | groups allowed to see it         |
+| `allowed_groups`                   | groups allowed to see it         |
 | `last_modified`                    | freshness                        |
 
 Without `allowed_groups` and a **security filter** on every search, an intern could receive chunks from executive committee documents.
@@ -415,7 +393,7 @@ Without `allowed_groups` and a **security filter** on every search, an intern co
 
 ### 7. BM25: keyword search
 
-BM25 is the classic keyword (lexical) search algorithm and the default in Elasticsearch, OpenSearch and Azure AI Search. It works on an **inverted index**, like the alphabetical index at the back of a book:
+BM25 is the classic keyword (lexical) search algorithm and the default in Elasticsearch, OpenSearch and Azure AI Search. It runs on an **inverted index**, which works like the alphabetical index at the back of a book:
 
 | Term            | Documents where it appears (postings) |
 |-----------------|---------------------------------------|
@@ -423,48 +401,45 @@ BM25 is the classic keyword (lexical) search algorithm and the default in Elasti
 | `"manager"`     | doc7, doc9                            |
 | `"spain"`       | doc7, doc12, doc15                    |
 
-Its score combines three ingredients:
+The score has three parts:
 
 | Ingredient | Idea | Example |
 |----|----|----|
-| **Term frequency** | More occurrences = more points, **but with saturation** (parameter `k1`, 1.2 by default in Elasticsearch †) | 3 times \> 1 time, but 20 times ≈ 10 times |
-| **Term rarity** | Rare words are worth more | "ORA-00942" is worth a lot; "of" almost nothing |
-| **Document length** | A short text containing the word scores higher than a long one (parameter `b`, 0.75 by default †) | A specific paragraph beats an entire manual |
+| Term frequency | More occurrences = more points, but with saturation (parameter `k1`, 1.2 by default in Elasticsearch †) | 3 times \> 1 time, but 20 times ≈ 10 times |
+| Term rarity | Rare words are worth more | "ORA-00942" is worth a lot; "of" almost nothing |
+| Document length | A short text containing the word scores higher than a long one (parameter `b`, 0.75 by default †) | A specific paragraph beats an entire manual |
 
-- ✅ Fast, no models, explainable, excellent for **exact terms** (codes, acronyms, proper names).
-- ❌ Doesn't understand synonyms: *"cheap laptop"* won't find *"budget notebook"*.
+BM25 is fast, needs no model, can be explained, and is excellent for exact terms such as codes, acronyms and proper names. Its weakness is synonyms: *"cheap laptop"* won't find *"budget notebook"*.
 
 ### 8. Semantic search: by meaning
 
 #### 8.1 Dense vectors (nearest-neighbor search)
 
-The question is turned into a vector and the closest chunks are retrieved. To do this quickly over millions of vectors, an approximate index is used (usually **HNSW**, a graph of neighbors).
+Here the question becomes a vector and you retrieve the closest chunks. Doing that quickly over millions of vectors takes an approximate index, usually **HNSW** (a graph of neighbors).
 
-- ✅ Understands synonyms, paraphrases and different languages.
-- ❌ It's a black box (you can't explain why something matched), it can confuse nearly identical codes (ORA-00942 vs ORA-00943) and it uses more memory. To reduce memory there is **quantization** (compressing the numbers, for example to 8 bits or to binary).
+Dense search understands synonyms, paraphrases and different languages. On the other hand, it is a black box (you can't explain why something matched), it can confuse nearly identical codes (ORA-00942 vs ORA-00943), and it uses more memory. Quantization reduces the memory by compressing the numbers, for example to 8 bits or to binary.
 
 #### 8.2 Learned sparse (SPLADE, ELSER)
 
-It's a middle ground: a model **expands** the text with related terms and their weights, and then searches an inverted index, like BM25.
+Learned sparse sits between the two. A model expands the text with related terms and their weights, and the search then runs on an inverted index, as with BM25:
 
 ```
 "cheap laptop" → { laptop: 2.1, notebook: 1.8, computer: 1.2, cheap: 1.9, budget: 1.5, price: 0.9 }
 ```
 
-- ✅ More explainable than dense vectors, and it finds synonyms.
-- ❌ Depends on the model's language (ELSER is recommended for English only) and has a token limit (ELSER encodes the first 512 tokens of each field).
+It is easier to explain than dense vectors and still finds synonyms. The catch is that it depends on the model's language (ELSER is recommended for English only) and has a token limit (ELSER encodes the first 512 tokens of each field).
 
 #### 8.3 Which one wins
 
 | Query | BM25 | Dense | Learned sparse |
 |----|----|----|----|
-| *"cheap laptop"* → doc with *"budget notebook"* | ❌ | ✅ | ✅ |
-| *"error ORA-00942"* → doc with that code | ✅ | ⚠️ | ✅ |
-| *"can I work from home?"* → doc with *"remote work"* | ❌ | ✅ | ✅ (if the language is supported) |
-| Explaining why it matched | ✅ | ❌ | 🟡 |
-| Cost | 💚 minimal | 🟠 model + memory | 🟡 model |
+| *"cheap laptop"* → doc with *"budget notebook"* | No | Yes | Yes |
+| *"error ORA-00942"* → doc with that code | Yes | Unreliable | Yes |
+| *"can I work from home?"* → doc with *"remote work"* | No | Yes | Yes, if the language is supported |
+| Explaining why it matched | Yes | No | Partly |
+| Cost | Minimal | Model + memory | Model |
 
-None of them always wins, which is why they are combined.
+None of them wins every time, which is why you combine them.
 
 ### 9. Hybrid search and RRF
 
@@ -528,13 +503,13 @@ None of them always wins, which is why they are combined.
 <rect x="296" y="364" width="16" height="12" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
 <text x="320" y="372" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace">Search step</text>
 <rect x="472" y="364" width="16" height="12" rx="2" fill="rgba(235,108,54,0.14)" stroke="#eb6c36" stroke-width="1"/>
-<text x="496" y="372" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace">Fusion (focus)</text>
+<text x="496" y="372" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace">Fusion</text>
 </svg></div><figcaption>Figure · Hybrid search: two searches, one RRF fusion and a reranker</figcaption></figure>
 
 
 #### 9.1 The problem
 
-The two searches return scores on **incompatible scales**:
+The two searches return scores on incompatible scales:
 
 | Rank | BM25 <span style="font-weight:400">(no upper bound)</span> | Vector <span style="font-weight:400">(cosine 0.33–1 in Azure)</span> |
 |----|----|----|
@@ -542,18 +517,18 @@ The two searches return scores on **incompatible scales**:
 | 2 | doc_A → 9.1 | doc_C → 0.87 |
 | 3 | doc_D → 3.2 | doc_B → 0.81 |
 
-Adding 12.4 + 0.81 makes no sense; it would be like adding euros and kilos.
+Adding 12.4 + 0.81 makes about as much sense as adding euros and kilos.
 
 #### 9.2 The solution: RRF (Reciprocal Rank Fusion)
 
-RRF ignores the scores and uses **only the position** of each document in each list:
+RRF ignores the scores and uses only the position of each document in each list:
 
 ```
 RRF(doc) = Σ  1 / (k + position of doc in that list)      with k = 60 typically
        over each list
 ```
 
-**Example:**
+Take the same rankings as above:
 
 | Position | BM25  | Vector |
 |----------|-------|--------|
@@ -561,12 +536,12 @@ RRF(doc) = Σ  1 / (k + position of doc in that list)      with k = 60 typically
 | 2        | doc_A | doc_C  |
 | 3        | doc_D | doc_B  |
 
-| Doc   | BM25 contribution | Vector contribution | **Total**   | Final |
-|-------|-------------------|---------------------|-------------|-------|
-| doc_A | 1/62 = 0.01613    | 1/61 = 0.01639      | **0.03252** | 🥇    |
-| doc_B | 1/61 = 0.01639    | 1/63 = 0.01587      | **0.03226** | 🥈    |
-| doc_C | 0                 | 1/62 = 0.01613      | **0.01613** | 🥉    |
-| doc_D | 1/63 = 0.01587    | 0                   | **0.01587** | 4     |
+| Doc   | BM25 contribution | Vector contribution | Total   | Final |
+|-------|-------------------|---------------------|---------|-------|
+| doc_A | 1/62 = 0.01613    | 1/61 = 0.01639      | 0.03252 | 1     |
+| doc_B | 1/61 = 0.01639    | 1/63 = 0.01587      | 0.03226 | 2     |
+| doc_C | 0                 | 1/62 = 0.01613      | 0.01613 | 3     |
+| doc_D | 1/63 = 0.01587    | 0                   | 0.01587 | 4     |
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rrf-scores-title rrf-scores-desc">
@@ -614,7 +589,7 @@ RRF(doc) = Σ  1 / (k + position of doc in that list)      with k = 60 typically
       <rect x="160" y="272" width="252" height="40" fill="rgba(79,93,117,0.15)" stroke="#4f5d75" stroke-width="1"/>
       <text x="420" y="296" fill="#2d3142" font-size="12" font-weight="600" font-family="Meslo, Menlo, monospace">0.01587</text>
       <text x="488" y="296" fill="#4f5d75" font-size="12" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-style="italic">BM25 only</text>
-      <text x="40" y="412" fill="#4f5d75" font-size="9" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">Rankings — BM25: B, A, D · Vector: A, C, B</text>
+      <text x="40" y="412" fill="#4f5d75" font-size="9" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">Rankings, BM25: B, A, D · Vector: A, C, B</text>
       <line x1="40" y1="436" x2="920" y2="436" stroke="rgba(0,0,0,0.10)" stroke-width="0.8"/>
       <text x="40" y="468" fill="#4f5d75" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.14em">LEGEND</text>
       <rect x="120" y="456" width="16" height="16" rx="4" fill="rgba(235,108,54,0.14)" stroke="#eb6c36" stroke-width="1.2"/>
@@ -624,49 +599,51 @@ RRF(doc) = Σ  1 / (k + position of doc in that list)      with k = 60 typically
     </svg></div><figcaption>Figure · RRF example with k = 60: score per document</figcaption></figure>
 
 
-doc_A wins because it is **high in both lists**. RRF rewards **consensus** between the two methods.
+doc_A wins because it ranks high in both lists. RRF rewards agreement between the two methods.
 
 #### 9.3 Why k = 60?
 
 |  | Position 1 | Position 2 | Difference |
 |----|----|----|----|
-| **k = 0** | 1.000 | 0.500 | double 😱 — being 1st in a single list dominates |
-| **k = 60** | 0.0164 | 0.0161 | almost equal ✓ — ranking well in several lists is what counts |
+| k = 0 | 1.000 | 0.500 | double: being 1st in a single list dominates |
+| k = 60 | 0.0164 | 0.0161 | almost equal: ranking well in several lists is what counts |
 
-The value comes from the original paper (Cormack, Clarke and Büttcher, SIGIR 2009), where it was chosen empirically. Azure AI Search documents that it works best with small values such as 60.
+The value comes from the original paper (Cormack, Clarke and Büttcher, SIGIR 2009), where it was chosen empirically, and Azure AI Search documents that it works best with small values such as 60.
 
 #### 9.4 Advantages, limits and variants
 
-- ✅ No scale calibration, nothing to train, and it accepts N lists (BM25, several vectors, several rewordings of the question).
-- ⚠️ **It ignores magnitude**: being first "by a mile" is worth the same as being first "by a hair".
-- ⚠️ **A bad list counts just the same**: if vector search returns junk, that junk also gets points.
-- **Weighted RRF**: one of the lists gets more weight (for example, the vector list ×2). Available in Azure (*vector weighting*), in LangChain's `EnsembleRetriever` †, and in Google Vector Search with `rrf_ranking_alpha`.
-- **Alternative, linear combination**: normalize the scores and add them with weights. It takes advantage of magnitude, but has to be calibrated with data. Examples: Elasticsearch's `linear` retriever, or DBSF in Qdrant †.
-- **RRF is not a reranker.** It only fuses lists. The reranker comes afterwards.
+RRF needs no scale calibration and nothing to train, and it accepts N lists (BM25, several vectors, several rewordings of the question). It has two weaknesses. It ignores magnitude, so being first "by a mile" is worth the same as being first "by a hair". And a bad list counts just the same: if vector search returns junk, that junk also gets points.
+
+There are two common variants:
+
+- Weighted RRF gives one of the lists more weight (for example, the vector list ×2). It is available in Azure (*vector weighting*), in LangChain's `EnsembleRetriever` †, and in Google Vector Search with `rrf_ranking_alpha`.
+- Linear combination normalizes the scores and adds them with weights. It uses the magnitude, but you have to calibrate it with data. Examples are Elasticsearch's `linear` retriever and DBSF in Qdrant †.
+
+Keep in mind that **RRF is not a reranker.** It only fuses lists, and the reranker comes afterwards.
 
 ### 10. Advanced retrieval strategies
 
 | Technique | What it does | Key evidence |
 |----|----|----|
-| **Rewriting with history** | Turns *"so how many days?"* into a complete question using the earlier chat | Standard practice |
-| **HyDE** | A model writes a hypothetical answer and the search is run with it | Competes with trained retrievers, without needing labels (Gao et al., 2022) |
-| **Multi-query / RAG-Fusion** | Several rewordings of the question, fused with RRF | More coverage; risk of drifting off topic |
-| **Step-back** | First ask something more general | +27% on TimeQA, +7% on MuSiQue (Google DeepMind) |
-| **Decomposition** | Splits a complex question into sub-questions | Foundation of agentic search |
-| **RAPTOR / parent document** | Hierarchical summaries; search by small chunk and return the large one | RAPTOR + GPT-4: +20% absolute on QuALITY |
-| **GraphRAG** | Entity graph + per-community summaries | Improves **global** questions ("which topics keep recurring?"). LazyGraphRAG indexes at 0.1% of the cost and queries \>700× cheaper. **It doesn't always win**: on specific lookups classic RAG usually matches or beats it (Han et al., 2025/26; HippoRAG 2) |
-| **Adaptive** (Self-RAG, Corrective RAG, Adaptive-RAG) | Decides when to search, how much, and corrects if the search was bad | Adaptive-RAG routes based on question complexity |
-| **Agentic / "Deep Research"** | Iterative search trained with reinforcement learning | Search-R1: +41% (7B) over baseline RAG; OpenAI Deep Research takes 5 to 30 minutes per task |
-| **Long context vs RAG** | Put everything in the prompt? | Models perform worse when the information is in the middle of the context ("Lost in the Middle"); retrieving too much makes the answer worse; the efficient approach is to **route** each query (Self-Route), and no option always wins (LaRA) |
+| Rewriting with history | Turns *"so how many days?"* into a complete question using the earlier chat | Standard practice |
+| HyDE | A model writes a hypothetical answer and the search is run with it | Competes with trained retrievers, without needing labels (Gao et al., 2022) |
+| Multi-query / RAG-Fusion | Several rewordings of the question, fused with RRF | More coverage; risk of drifting off topic |
+| Step-back | First ask something more general | +27% on TimeQA, +7% on MuSiQue (Google DeepMind) |
+| Decomposition | Splits a complex question into sub-questions | Foundation of agentic search |
+| RAPTOR / parent document | Hierarchical summaries; search by small chunk and return the large one | RAPTOR + GPT-4: +20% absolute on QuALITY |
+| GraphRAG | Entity graph + per-community summaries | Improves global questions ("which topics keep recurring?"). LazyGraphRAG indexes at 0.1% of the cost and queries \>700× cheaper. It doesn't always win: on specific lookups classic RAG usually matches or beats it (Han et al., 2025/26; HippoRAG 2) |
+| Adaptive (Self-RAG, Corrective RAG, Adaptive-RAG) | Decides when to search, how much, and corrects if the search was bad | Adaptive-RAG routes based on question complexity |
+| Agentic / "Deep Research" | Iterative search trained with reinforcement learning | Search-R1: +41% (7B) over baseline RAG; OpenAI Deep Research takes 5 to 30 minutes per task |
+| Long context vs RAG | Put everything in the prompt? | Models perform worse when the information is in the middle of the context ("Lost in the Middle"); retrieving too much makes the answer worse; the efficient approach is to route each query (Self-Route), and no option always wins (LaRA) |
 
 ### 11. Case study: Elasticsearch
 
-Elasticsearch offers four distinct "semantic" pieces, which are best not mixed up:
+Elasticsearch has four different "semantic" pieces, and they are easy to mix up:
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:670px" viewBox="0 0 1000 360"  xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rag-es-title rag-es-desc">
   <title id="rag-es-title">Elasticsearch: three retrieval approaches over one field type</title>
-  <desc id="rag-es-desc">Three side-by-side approaches in Elasticsearch — A dense kNN vectors, B learned sparse with ELSER, and C semantic reranking — sit above a shared field type, D semantic_text, which chunks text and generates embeddings automatically and feeds the dense and semantic-reranking approaches.</desc>
+  <desc id="rag-es-desc">Three side-by-side approaches in Elasticsearch, A dense kNN vectors, B learned sparse with ELSER, and C semantic reranking, sit above a shared field type, D semantic_text, which chunks text and generates embeddings automatically and feeds the dense and semantic-reranking approaches.</desc>
   <defs>
     <marker id="es-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#003da5"/></marker>
   </defs>
@@ -698,13 +675,13 @@ Elasticsearch offers four distinct "semantic" pieces, which are best not mixed u
   <text x="820" y="122" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Semantic reranking</text>
   <text x="820" y="142" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">text_similarity_reranker</text>
   <text x="820" y="158" font-family="Meslo, Menlo, monospace" font-size="9" fill="#4d6fa8" text-anchor="middle">/ RERANK in ES|QL</text>
-  <!-- D. semantic_text (focal, underpins A and C) -->
+  <!-- D. semantic_text (highlighted, underpins A and C) -->
   <rect x="40" y="244" width="920" height="72" rx="6" fill="#ffffff"/>
   <rect x="40" y="244" width="920" height="72" rx="6" fill="rgba(254,219,0,0.14)" stroke="#fedb00" stroke-width="1.4"/>
   <rect x="52" y="256" width="20" height="12" rx="2" fill="none" stroke="#fedb00" stroke-width="1"/>
   <text x="62" y="265" font-family="Meslo, Menlo, monospace" font-size="7" fill="#003da5" text-anchor="middle">D</text>
   <text x="500" y="278" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">semantic_text field type</text>
-  <text x="500" y="298" font-family="Meslo, Menlo, monospace" font-size="9" fill="#4d6fa8" text-anchor="middle">chunks the text and generates embeddings automatically — the low-effort default that feeds A and C</text>
+  <text x="500" y="298" font-family="Meslo, Menlo, monospace" font-size="9" fill="#4d6fa8" text-anchor="middle">chunks the text and generates embeddings automatically, the low-effort default that feeds A and C</text>
   <!-- legend -->
   <line x1="40" y1="336" x2="960" y2="336" stroke="rgba(0,0,0,0.10)" stroke-width="0.8"/>
   <text x="40" y="352" font-family="Meslo, Menlo, monospace" font-size="8" fill="#003da5" letter-spacing="0.14em">LEGEND</text>
@@ -715,15 +692,15 @@ Elasticsearch offers four distinct "semantic" pieces, which are best not mixed u
 </svg></div><figcaption>Elasticsearch: three retrieval approaches (A·B·C) over the shared semantic_text field (D)</figcaption></figure>
 
 
-- **A. Dense**: `dense_vector` + `knn` query. int8, int4 and BBQ quantization. Available models: E5 (multilingual), Jina (via the Elastic Inference Service) or external ones (OpenAI, Azure OpenAI, Cohere, Bedrock, Vertex AI, Hugging Face).
-- **B. ELSER**: expands terms; it doesn't generate synonyms but learned associations. According to Elastic's own BEIR benchmark, it improves on average by **18% in nDCG@10 over BM25** (10 wins, 1 tie, 1 loss). Recommended for English, reads 512 tokens per field and requires a paid subscription.
-- **C. Reranker**: the `text_similarity_reranker` retriever or the `RERANK` command in ES\|QL.
-- **D. `semantic_text`** (GA since version 9.0). ⚠️ If you don't pin `inference_id`, after a version upgrade new indices may use a different model. **In production, always pin the model.**
+- A. Dense: `dense_vector` + `knn` query, with int8, int4 and BBQ quantization. You can use E5 (multilingual), Jina (via the Elastic Inference Service) or external models (OpenAI, Azure OpenAI, Cohere, Bedrock, Vertex AI, Hugging Face).
+- B. ELSER expands terms. What it adds are learned associations, not synonyms. On Elastic's own BEIR benchmark it improves nDCG@10 over BM25 by 18% on average (10 wins, 1 tie, 1 loss). It is recommended for English, reads 512 tokens per field and requires a paid subscription.
+- C. Reranker: the `text_similarity_reranker` retriever or the `RERANK` command in ES\|QL.
+- D. `semantic_text` (GA since version 9.0). If you don't pin `inference_id`, new indices may use a different model after a version upgrade, so **always pin the model in production**.
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="elastic-retrievers-title elastic-retrievers-desc">
       <title id="elastic-retrievers-title">Elasticsearch: retriever tree for hybrid search with a reranker</title>
-      <desc id="elastic-retrievers-desc">Three nested levels: the outer text_similarity_reranker retriever (focus) reranks the top 50 with a rerank model; inside, rrf fuses two standard retrievers: match with BM25 on content and semantic on a semantic_text field.</desc>
+      <desc id="elastic-retrievers-desc">Three nested levels: the outer text_similarity_reranker retriever reranks the top 50 with a rerank model; inside, rrf fuses two standard retrievers: match with BM25 on content and semantic on a semantic_text field.</desc>
       <defs>
         <marker id="elastic-retrievers-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
         <marker id="elastic-retrievers-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
@@ -756,7 +733,7 @@ Elasticsearch offers four distinct "semantic" pieces, which are best not mixed u
     </svg></div><figcaption>Figure · Elasticsearch: retriever tree for hybrid search with a reranker</figcaption></figure>
 
 
-**Hybrid search with a reranker, in a single call:**
+Here is hybrid search with a reranker in a single call:
 
 ``` json
 {
@@ -782,9 +759,9 @@ Elasticsearch offers four distinct "semantic" pieces, which are best not mixed u
 }
 ```
 
-Other ways to fuse: the `linear` retriever (`minmax` or `l2_norm` normalizers) and, in ES\|QL, `FORK` + `FUSE` (RRF or LINEAR) + `RERANK`. In the multi-field format, Elastic normalizes the lexical and semantic fields so that each group contributes 50%.
+You can also fuse with the `linear` retriever (`minmax` or `l2_norm` normalizers) or, in ES\|QL, with `FORK` + `FUSE` (RRF or LINEAR) + `RERANK`. In the multi-field format, Elastic normalizes the lexical and semantic fields so that each group contributes 50%.
 
-⚠️ **Vocabulary trap:** in Elastic, *"semantic search"* means searching with embeddings. In Azure, *"semantic ranker"* is a **reranker**.
+Watch the vocabulary. In Elastic, *"semantic search"* means searching with embeddings; in Azure, the *"semantic ranker"* is a reranker.
 
 ## Part IV · Reranking
 
@@ -792,7 +769,7 @@ Other ways to fuse: the `linear` retriever (`minmax` or `l2_norm` normalizers) a
 
 #### 12.1 What it is
 
-A **reranker** takes the ~50–150 candidates from the search and reorders them by reading **the question and each chunk together**. It is more accurate than comparing vectors, but slower, so it is only applied to a few candidates.
+A **reranker** takes the ~50–150 candidates from the search and reorders them by reading the question and each chunk together. That is more accurate than comparing vectors, but slower, so you only apply it to a few candidates.
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 464" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bi-vs-cross-encoder-title bi-vs-cross-encoder-desc">
@@ -863,20 +840,20 @@ A **reranker** takes the ~50–150 candidates from the search and reorders them 
 <rect x="472" y="424" width="16" height="12" rx="2" fill="rgba(0,0,0,0.05)" stroke="#4f5d75" stroke-width="1"/>
 <text x="496" y="432" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace">Precomputed</text>
 <rect x="648" y="424" width="16" height="12" rx="2" fill="rgba(235,108,54,0.14)" stroke="#eb6c36" stroke-width="1"/>
-<text x="672" y="432" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace">Reranker (focus)</text>
+<text x="672" y="432" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace">Reranker</text>
 </svg></div><figcaption>Figure · Embeddings (bi-encoder) vs. reranker (cross-encoder)</figcaption></figure>
 
 
-**Typical two-stage architecture:** hybrid search (prioritizes coverage) → reranker over 100–150 candidates → pass between 10 and 20 chunks to the model that writes the answer.
+The typical architecture has two stages: hybrid search (which prioritizes coverage), then a reranker over 100–150 candidates, and finally between 10 and 20 chunks passed to the model that writes the answer.
 
 #### 12.2 Types
 
 | Type | Examples | Note |
 |----|----|----|
-| **Classic cross-encoder** | monoBERT, bge-reranker-v2-m3 | monoBERT: +27% in MRR@10 on MS MARCO (2019) |
-| **Language model as reranker** | RankGPT, RankZephyr (open source), Setwise | RankZephyr matches or beats GPT-4 |
-| **Reasoning reranker** (2025–26) | Rank1, Rank-R1, ReasonRank | On BRIGHT (search that requires reasoning), the best MTEB model drops from 59.0 to 18.3; reasoning about the question adds up to +12.2 |
-| **Late interaction** | ColBERT | Middle ground: ~100× faster than a BERT reranker |
+| Classic cross-encoder | monoBERT, bge-reranker-v2-m3 | monoBERT: +27% in MRR@10 on MS MARCO (2019) |
+| Language model as reranker | RankGPT, RankZephyr (open source), Setwise | RankZephyr matches or beats GPT-4 |
+| Reasoning reranker (2025–26) | Rank1, Rank-R1, ReasonRank | On BRIGHT (search that requires reasoning), the best MTEB model drops from 59.0 to 18.3; reasoning about the question adds up to +12.2 |
+| Late interaction | ColBERT | Middle ground: ~100× faster than a BERT reranker |
 
 #### 12.3 Notable models (verified)
 
@@ -893,20 +870,19 @@ A **reranker** takes the ~50–150 candidates from the search and reorders them 
 
 #### 12.4 Practical rules
 
-- It is the **cheapest and most proven** improvement (Anthropic: the failure rate drops from 2.9% to 1.9% just by adding a reranker).
-- **The reranker doesn't search, it only reorders.** If the correct document isn't among the candidates, it can't save you. That's why you measure retrieval coverage (recall) first.
-- Current differentiator: **instruction-following rerankers**, which can be given business rules such as "prioritize recent content".
-- Every vendor claims to be the best. Measure with your own data.
-- Useful add-ons:
-  - **MMR**: removes redundant chunks.
-  - **Compression**: LongLLMLingua gives +21.4% quality with ~4× fewer tokens.
-  - **Placement in the prompt**: the most relevant content at the beginning or the end ("Lost in the Middle").
+A reranker is the cheapest and most proven improvement you can make. In Anthropic's numbers, adding one on its own takes the failure rate from 2.9% to 1.9%.
+
+But **the reranker only reorders what the search found.** If the correct document isn't among the candidates, it can't save you, which is why you measure retrieval coverage (recall) first.
+
+What currently sets rerankers apart is instruction following: you can give them business rules such as "prioritize recent content". Every vendor claims to be the best, so measure with your own data.
+
+Some add-ons are worth having. MMR removes redundant chunks. Compression with LongLLMLingua gives +21.4% quality with ~4× fewer tokens. And placement in the prompt matters: put the most relevant content at the beginning or the end ("Lost in the Middle").
 
 ## Part V · Generation and guardrails
 
 ### 13. Generation with citations and guardrails
 
-**Prompt structure:**
+The prompt looks like this:
 
 ```
 System:   Answer ONLY from the context. Cite every claim as [n].
@@ -916,15 +892,15 @@ Context:  [1] Remote Work Policy §3.2 Spain, p. 4: "Manager: 2 days/week..."
 Question: remote work days for a manager in Spain
 ```
 
-**Guardrails:**
+Guardrails sit before, during and after generation:
 
-1.  **Before**: detect attempts to manipulate the model ("jailbreak" or prompt injection).
-2.  **During**: if the reranker leaves no chunk above the threshold, answer "I couldn't find that information" instead of making something up.
-3.  **After**: check that every sentence of the answer is supported by the chunks. If it fails, regenerate or answer cautiously.
+1.  Before, detect attempts to manipulate the model ("jailbreak" or prompt injection).
+2.  During, if the reranker leaves no chunk above the threshold, answer "I couldn't find that information" instead of making something up.
+3.  After, check that every sentence of the answer is supported by the chunks. If the check fails, regenerate or answer cautiously.
 
 ## Part VI · Evaluation
 
-### 14. The key idea: two separate tests
+### 14. Two separate tests
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 580" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="eval-cuadrante-title eval-cuadrante-desc">
@@ -977,7 +953,7 @@ If you only look at the final answer, you don't know what to fix. Microsoft call
 
 ### 15. The golden dataset (the "answer key")
 
-It is a set of 100 to 300 questions, each with its correct answer and the documents that should come up:
+The golden dataset is a set of 100 to 300 questions, each with its correct answer and the documents that should come up:
 
 ``` json
 {"query": "Remote work days, manager, Spain?",
@@ -990,81 +966,69 @@ It is a set of 100 to 300 questions, each with its correct answer and the docume
 |----|----|
 | Logs of real questions | That is what people actually ask |
 | Business experts (HR, legal) | Hard cases and traps |
-| Synthetic generation (RAGAS, cloud-provider simulators) | Fast coverage, **always reviewed by a human** |
-| **Questions with no answer** in the documents | They check that the system says "I don't know" instead of making things up |
+| Synthetic generation (RAGAS, cloud-provider simulators) | Fast coverage, but always reviewed by a human |
+| Questions with no answer in the documents | They check that the system says "I don't know" instead of making things up |
 
 ### 16. Retrieval metrics, with numbers
 
-**Example:** for one question, the correct documents are **A and C**. The search engine returned `[B, A, D, C, E]`.
+Say that for one question the correct documents are A and C, and the search engine returned `[B, A, D, C, E]`.
 
 | Position     | 1   | 2   | 3   | 4   | 5   |
 |--------------|-----|-----|-----|-----|-----|
-| **Returned** | B   | A   | D   | C   | E   |
-| **Correct?** | ✗   | ✓   | ✗   | ✓   | ✗   |
+| Returned     | B   | A   | D   | C   | E   |
+| Correct?     | ✗   | ✓   | ✗   | ✓   | ✗   |
 
 | Metric | Question it answers | Calculation | Value |
 |----|----|----|----|
-| **Recall@3** (coverage) | How many of the correct ones appear in the top 3? | 1 of 2 | **0.50** |
-| **Recall@5** | And in the top 5? | 2 of 2 | **1.00** |
-| **Precision@5** (precision) | Of what I brought back, how much is useful? | 2 of 5 | **0.40** |
-| **MRR** (position of the first hit) | How high up is the first correct one? | 1/2 | **0.50** |
-| **nDCG@5** (ranking quality) | Are the correct ones as high up as possible? | Actual = 1/log₂3 + 1/log₂5 = 1.06; ideal = 1 + 1/log₂3 = 1.63 | **0.65** |
+| Recall@3 (coverage) | How many of the correct ones appear in the top 3? | 1 of 2 | 0.50 |
+| Recall@5 | And in the top 5? | 2 of 2 | 1.00 |
+| Precision@5 (precision) | Of what I brought back, how much is useful? | 2 of 5 | 0.40 |
+| MRR (position of the first hit) | How high up is the first correct one? | 1/2 | 0.50 |
+| nDCG@5 (ranking quality) | Are the correct ones as high up as possible? | Actual = 1/log₂3 + 1/log₂5 = 1.06; ideal = 1 + 1/log₂3 = 1.63 | 0.65 |
 
-**How to read it:**
-
-- **Low Recall@50** → the problem is in retrieval (chunking, embeddings, missing BM25). The reranker won't fix it.
-- **High Recall@50 but low nDCG@5** → the problem is in the reranker.
+These numbers tell you where to look. If Recall@50 is low, the problem is in retrieval (chunking, embeddings, missing BM25), and the reranker won't fix it. If Recall@50 is high but nDCG@5 is low, the problem is in the reranker.
 
 ### 17. Answer metrics, with numbers
 
-System answer: *"You get 2 days per week \[1\], 3 starting January 2026 \[2\], and you can choose Fridays."*
+Suppose the system answers: *"You get 2 days per week \[1\], 3 starting January 2026 \[2\], and you can choose Fridays."*
 
 | Claim in the answer        | Supported by the chunks? |
 |----------------------------|--------------------------|
 | `"2 days/week"`            | ✓                        |
 | `"3 from January 2026"`    | ✓                        |
-| `"you can choose Fridays"` | ✗ — **made up**          |
+| `"you can choose Fridays"` | ✗ (made up)              |
 
 | Metric | Question | Result |
 |----|----|----|
-| **Groundedness / Faithfulness** (the *precision* side) | Is everything it said in the chunks? | 2/3 = **0.67** ❌ hallucination |
-| **Completeness / Answer correctness** (the *coverage* side) | Did it say everything the correct answer says? | 2/2 = **1.0** ✓ |
-| **Relevance** | Does it answer what was asked? | ✓ |
-| **Correct citations** | Does each \[n\] support its sentence? | ✓ |
+| Groundedness / Faithfulness (the *precision* side) | Is everything it said in the chunks? | 2/3 = 0.67 ✗ hallucination |
+| Completeness / Answer correctness (the *coverage* side) | Did it say everything the correct answer says? | 2/2 = 1.0 ✓ |
+| Relevance | Does it answer what was asked? | ✓ |
+| Correct citations | Does each \[n\] support its sentence? | ✓ |
 
 Microsoft frames it the same way: faithfulness to the context is the precision side (add nothing) and completeness is the coverage side (leave out nothing critical).
 
-**"Nugget" evaluation** (TREC 2024): you define the atomic facts a good answer must contain and count how many appear.
+Another option is "nugget" evaluation (TREC 2024): you define the atomic facts a good answer must contain and count how many appear.
 
 ### 18. The LLM as a judge
 
-Nobody reviews 10,000 answers by hand, so another model plays the teacher. But it has biases:
+Nobody reviews 10,000 answers by hand, so another model plays the teacher. That judge has known biases. It prefers the first option it sees (position), it prefers long answers (verbosity), and it prefers text from its own model family (self-preference).
 
-- it prefers the first option it sees (position);
-- it prefers long answers (verbosity);
-- it prefers text from its own model family (self-preference).
-
-**Recipe:**
+To set up a judge you can rely on:
 
 1.  A human labels 50–100 cases.
 2.  Measure judge–human agreement (Cohen's kappa, accuracy, F1).
-3.  The judge must be from a **different model family** than the generator.
+3.  The judge must be from a different model family than the generator.
 4.  The judge must explain its score.
 5.  Scoring claim by claim (RAGChecker) or by nuggets is better than giving one overall score.
 
-**Evidence:**
-
-- GPT-4 as a judge reaches more than 80% agreement with humans, the same level as between two humans (Zheng et al., 2023).
-- In TREC 2024, perfect human–GPT-4o agreement was 56%, and 72% when the human was correcting the model's label.
-- Conclusion: the LLM judge is reliable for comparing systems and less reliable question by question.
-- **ARES** combines a few hundred human labels with the automatic judge to produce statistically valid **confidence intervals**.
+How far can you trust it? GPT-4 as a judge reaches more than 80% agreement with humans, the same level as between two humans (Zheng et al., 2023). In TREC 2024, perfect human–GPT-4o agreement was 56%, and 72% when the human was correcting the model's label. So the LLM judge is reliable for comparing systems and less reliable question by question. ARES combines a few hundred human labels with the automatic judge to produce statistically valid confidence intervals.
 
 ### 19. Evaluation before deployment and in production
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 664" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="eval-bucle-title eval-bucle-desc">
       <title id="eval-bucle-title">The continuous evaluation loop</title>
-      <desc id="eval-bucle-desc">Six-step clockwise loop: golden dataset, offline evaluation, quality gate (focus), deployment, continuous evaluation, and real failures with thumbs-down votes, which feed back into the golden dataset; at the center, retrieval and answer metrics.</desc>
+      <desc id="eval-bucle-desc">Six-step clockwise loop: golden dataset, offline evaluation, quality gate, deployment, continuous evaluation, and real failures with thumbs-down votes, which feed back into the golden dataset; at the center, retrieval and answer metrics.</desc>
       <defs>
         <marker id="eval-bucle-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
         <marker id="eval-bucle-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
@@ -1122,47 +1086,41 @@ Nobody reviews 10,000 answers by hand, so another model plays the teacher. But i
       <line x1="328" y1="628" x2="364" y2="628" stroke="#4f5d75" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#eval-bucle-arrow)"/>
       <text x="372" y="632" fill="#2d3142" font-size="12" font-weight="400" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="start">Writes to the metrics</text>
       <rect x="580" y="620" width="24" height="16" rx="4" fill="rgba(235,108,54,0.14)" stroke="#eb6c36" stroke-width="1.2"/>
-      <text x="612" y="632" fill="#2d3142" font-size="12" font-weight="400" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="start">Quality gate (focus)</text>
+      <text x="612" y="632" fill="#2d3142" font-size="12" font-weight="400" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="start">Quality gate</text>
     </svg></div><figcaption>Figure · The continuous evaluation loop</figcaption></figure>
 
 
-**Example quality gate** in continuous integration: Recall@10 drops no more than 2 points · faithfulness ≥ 95% · correct "I don't know" ≥ 90%. In production, a percentage of real traffic is sampled and evaluated without a reference answer (faithfulness, answer relevance, context relevance), together with 👍/👎, latency and cost.
+A quality gate in continuous integration could require that Recall@10 drops no more than 2 points, faithfulness stays ≥ 95%, and correct "I don't know" answers stay ≥ 90%. Those thresholds are only examples; the business sets the real ones. In production you sample a percentage of real traffic and evaluate it without a reference answer (faithfulness, answer relevance, context relevance), alongside thumbs-up/thumbs-down votes, latency and cost.
 
-The thresholds are **examples**; the business sets them.
-
-**Parameter sweep.** Microsoft recommends trying combinations and measuring which one wins. The following numbers are **illustrative**, not real results:
+Microsoft recommends a parameter sweep: try combinations and measure which one wins. The numbers below are illustrative, not real results:
 
 | Configuration | Recall@10 | nDCG@5 | Faithfulness | Latency |
 |----|----|----|----|----|
 | vector only | 0.71 | 0.58 | 0.90 | 0.8 s |
 | hybrid | 0.84 | 0.66 | 0.92 | 0.9 s |
-| **hybrid + rerank** ← chosen | 0.84 | **0.79** | 0.95 | 1.3 s |
+| hybrid + rerank ← chosen | 0.84 | 0.79 | 0.95 | 1.3 s |
 | \+ agentic <span style="font-weight:400">(complex questions only)</span> | 0.88 | 0.81 | 0.95 | 3.5 s |
 
-**Rules:**
-
-- No more than about 5 metrics per application (DeepEval).
-- Use the same evaluators in development and in production (MLflow / Databricks).
-- In production you can only use metrics that don't need a correct answer.
+DeepEval suggests no more than about 5 metrics per application. MLflow / Databricks recommend using the same evaluators in development and in production. And in production you can only use metrics that don't need a correct answer.
 
 ### 20. Why it matters: hallucination in real systems
 
 | Study | Result |
 |----|----|
-| Stanford (2024): commercial legal tools with RAG | They hallucinate between **17% and 33%** of the time |
-| CRAG (Meta, 2024) | Model alone: ≤34% accuracy; simple RAG: 44%; the best industrial RAG systems answer without hallucinating only **63%** of the time |
+| Stanford (2024): commercial legal tools with RAG | They hallucinate between 17% and 33% of the time |
+| CRAG (Meta, 2024) | Model alone: ≤34% accuracy; simple RAG: 44%; the best industrial RAG systems answer without hallucinating only 63% of the time |
 | FinanceBench (2023) | GPT-4-Turbo with retrieval failed or refused to answer in 81% of cases |
 | ALCE (2023) | Even the best models lack full support for their citations 50% of the time |
 | Vectara (leaderboard of 2026-09-22, summarization task) | Hallucination rates between 1.8% and 24.2% depending on the model (GPT-4o 9.6%, Gemini 2.5 Pro 7.0%, Claude Sonnet 4.5 12.0%) |
-| FaithBench (2024) | The best hallucination detectors hover around **50%** accuracy on hard cases |
+| FaithBench (2024) | The best hallucination detectors hover around 50% accuracy on hard cases |
 
-Several of these figures are from 2023–2024, with older models. Always cite them with year and model.
+Several of these figures are from 2023–2024 and come from older models, so always cite them with year and model.
 
 ## Part VII · A production example on Azure
 
 ### 21. Internal policy copilot, step by step
 
-**Case:** a company with 20,000 employees. HR, legal and procurement documents in SharePoint and Blob Storage. Requirements: per-user permissions, citations in every answer, and "I don't know" when there is no information.
+The case is a company with 20,000 employees, with HR, legal and procurement documents in SharePoint and Blob Storage. It needs per-user permissions, citations in every answer, and "I don't know" when there is no information.
 
 #### 21.1 Architecture
 
@@ -1256,7 +1214,7 @@ Several of these figures are from 2023–2024, with older models. Always cite th
 <text x="40" y="588" fill="#4f5d75" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.14em">LEGEND</text>
 <rect x="112" y="580" width="20" height="12" rx="2" fill="#ffffff"/>
 <rect x="112" y="580" width="20" height="12" rx="2" fill="rgba(235,108,54,0.14)" stroke="#eb6c36" stroke-width="1"/>
-<text x="144" y="588" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">FOCAL</text>
+<text x="144" y="588" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">KEY</text>
 <rect x="192" y="580" width="20" height="12" rx="2" fill="#ffffff"/>
 <rect x="192" y="580" width="20" height="12" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
 <text x="224" y="588" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">SERVICE</text>
@@ -1276,7 +1234,7 @@ Several of these figures are from 2023–2024, with older models. Always cite th
 </svg></div><figcaption>Figure · Internal policy copilot on Azure</figcaption></figure>
 
 
-**Equivalents with a LangChain + Chroma/Qdrant stack:**
+If you know the LangChain + Chroma/Qdrant stack, the pieces map like this:
 
 | Open-source stack | On Azure |
 |----|----|
@@ -1288,7 +1246,7 @@ Several of these figures are from 2023–2024, with older models. Always cite th
 
 #### 21.2 One question, end to end
 
-Ana, a manager in Madrid, previously asked about her contract. Now she types: **"so how many days can I work remotely?"**
+Ana, a manager in Madrid, asked about her contract earlier in the chat. Now she types *"so how many days can I work remotely?"*
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 736" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="azure-secuencia-title azure-secuencia-desc">
@@ -1369,11 +1327,11 @@ Ana, a manager in Madrid, previously asked about her contract. Now she types: **
     </svg></div><figcaption>Figure · One question end to end: “so how many days can I work remotely?”</figcaption></figure>
 
 
-1.  **Rewriting:** the model uses the chat history and generates the question *"remote work days allowed for a manager in Spain"*.
+1.  The model rewrites the question using the chat history: *"remote work days allowed for a manager in Spain"*.
 
-2.  **Hybrid search:** BM25 and vector search run in parallel and are fused with RRF (k=60). Before scoring, the **security filter** removes whatever Ana is not allowed to see.
+2.  BM25 and vector search run in parallel and are fused with RRF (k=60). Before scoring, the security filter removes whatever Ana is not allowed to see.
 
-3.  **Semantic ranker:** takes only the **top 50** and scores them from 0 to 4:
+3.  The semantic ranker takes only the top 50 and scores them from 0 to 4:
 
     | Score | Meaning                      |
     |-------|------------------------------|
@@ -1385,77 +1343,76 @@ Ana, a manager in Madrid, previously asked about her contract. Now she types: **
 
     Chunks with a score \< 2 are discarded. If none are left, the answer is "I couldn't find that information". Microsoft warns that the score distribution can vary slightly, so thresholds should not be too fine-grained.
 
-4.  **Generation with citations** using the prompt structure from section 13.
+4.  The model generates the answer with citations, using the prompt structure from section 13.
 
-5.  **Faithfulness check:** each sentence is verified to be supported by the chunks. If it fails, the answer is regenerated or given with caution.
+5.  A faithfulness check verifies that each sentence is supported by the chunks. If it fails, the answer is regenerated or given with caution.
 
-**If the question is complex** (*"compare remote work in Spain vs Mexico and tell me which applies if I relocate"*): Azure AI Search **agentic retrieval** splits the question into subqueries, runs them in parallel, reranks each one with the semantic ranker and merges the results. LLM-based query planning and answer synthesis are in **preview**.
+A complex question (*"compare remote work in Spain vs Mexico and tell me which applies if I relocate"*) goes to Azure AI Search agentic retrieval, which splits it into subqueries, runs them in parallel, reranks each one with the semantic ranker and merges the results. The LLM-based query planning and answer synthesis are still in preview.
 
-**If the question is global** (*"which themes recur across all the 2026 policies?"*): that is where GraphRAG is worth it.
+A global question (*"which themes recur across all the 2026 policies?"*) is where GraphRAG is worth it.
 
 #### 21.3 Evaluation on Azure (Microsoft Foundry)
 
 | Evaluator | Type | Needs a correct answer | Status |
 |----|----|----|----|
-| **Document Retrieval** | Retrieval: NDCG, XDCG, Fidelity, Max Relevance, Holes | Yes (relevance labels) | GA |
-| **Retrieval** | Retrieval, judged by a language model (1–5 scale) | No | GA |
-| **Groundedness** | Answer: faithfulness to the context | No | GA |
-| **Groundedness Pro** | Strict faithfulness with Content Safety (true/false) | No | **(preview)** |
-| **Relevance** | Answer: does it answer the question? | No | GA |
-| **Response Completeness** | Answer: does it leave out anything critical? | Yes | **(preview)** |
+| Document Retrieval | Retrieval: NDCG, XDCG, Fidelity, Max Relevance, Holes | Yes (relevance labels) | GA |
+| Retrieval | Retrieval, judged by a language model (1–5 scale) | No | GA |
+| Groundedness | Answer: faithfulness to the context | No | GA |
+| Groundedness Pro | Strict faithfulness with Content Safety (true/false) | No | (preview) |
+| Relevance | Answer: does it answer the question? | No | GA |
+| Response Completeness | Answer: does it leave out anything critical? | Yes | (preview) |
 
-- Scale of 1 to 5; passes at 3 by default.
-- **Continuous evaluation**: evaluates samples of real traffic (configurable percentage, up to 1000 requests per hour) and sends the results to Application Insights, linked to the traces.
+Scores use a scale of 1 to 5 and pass at 3 by default. Continuous evaluation runs on samples of real traffic (configurable percentage, up to 1000 requests per hour) and sends the results to Application Insights, linked to the traces.
 
 ## Part VIII · Comparison: Azure vs Google Cloud vs open source
 
 ### 22. Azure vs Google Cloud vs open source
 
-**New names** (verified on 2026-09-23):
+Some products have been renamed recently (verified on 2026-09-23):
 
-- At Google, *Vertex AI* now appears as **Gemini Enterprise Agent Platform**, *Vertex AI Search* is being renamed to **Agent Search**, and *Vector Search 2.0* is now called **Agent Retrieval**.
-- At Microsoft, *Azure AI Foundry* is now **Microsoft Foundry**.
+- At Google, *Vertex AI* now appears as Gemini Enterprise Agent Platform, *Vertex AI Search* is being renamed to Agent Search, and *Vector Search 2.0* is now called Agent Retrieval.
+- At Microsoft, *Azure AI Foundry* is now Microsoft Foundry.
 
 #### Phase 1: Preparing the documents
 
 | Stage | What it does | Azure | Google Cloud | Open source |
 |----|----|----|----|----|
-| **1. Sources** | Where the documents live | Blob Storage, SharePoint | Cloud Storage, Google Drive | File system, S3-compatible storage (MinIO) † |
-| **2. Reading (parsing)** | PDF/Word → text with structure | **Document Layout skill**, which uses the Document Intelligence layout model and returns Markdown by section | **Document AI Layout Parser**: stable version since 2024; Gemini-powered versions in preview; figure and table descriptions with Gemini in preview | **Docling** (IBM, MIT), **Unstructured**, MinerU †, Marker † |
-| **3. Chunking** | Chunks with context | Document Layout skill (by section, or fixed size with overlap) and Text Split skill | The Layout Parser chunks by structure and adds the parent headings. RAG Engine lets you set size and overlap | LangChain and LlamaIndex text splitters; Docling chunking † |
-| **4. Embeddings** | Text → numbers | Azure OpenAI **text-embedding-3-large / -small** | **gemini-embedding-001** (up to 3072 dimensions, 2048 tokens per text), text-embedding-005 (English and code), text-multilingual-embedding-002 | **BGE-M3** (dense + sparse + multi-vector, more than 100 languages), **Qwen3-Embedding** (Apache 2.0), multilingual-E5 |
-| **5. Index** | Database to search | **Azure AI Search**: vectors, keywords and filters in a single service | **Vector Search / Agent Retrieval**, **RAG Engine** (managed database, Pinecone or Weaviate) or **Agent Search** (fully managed) | **Qdrant, Chroma**, Weaviate, Milvus, pgvector, Elasticsearch / OpenSearch † |
-| **6. Permissions** | Each user sees only their own content | Entra ID + group filter in the index | Google access control (IAM) + per-data-source access control in Agent Search | Metadata filters in the vector database † |
+| 1. Sources | Where the documents live | Blob Storage, SharePoint | Cloud Storage, Google Drive | File system, S3-compatible storage (MinIO) † |
+| 2. Reading (parsing) | PDF/Word → text with structure | Document Layout skill, which uses the Document Intelligence layout model and returns Markdown by section | Document AI Layout Parser: stable version since 2024; Gemini-powered versions in preview; figure and table descriptions with Gemini in preview | Docling (IBM, MIT), Unstructured, MinerU †, Marker † |
+| 3. Chunking | Chunks with context | Document Layout skill (by section, or fixed size with overlap) and Text Split skill | The Layout Parser chunks by structure and adds the parent headings. RAG Engine lets you set size and overlap | LangChain and LlamaIndex text splitters; Docling chunking † |
+| 4. Embeddings | Text → numbers | Azure OpenAI text-embedding-3-large / -small | gemini-embedding-001 (up to 3072 dimensions, 2048 tokens per text), text-embedding-005 (English and code), text-multilingual-embedding-002 | BGE-M3 (dense + sparse + multi-vector, more than 100 languages), Qwen3-Embedding (Apache 2.0), multilingual-E5 |
+| 5. Index | Database to search | Azure AI Search: vectors, keywords and filters in a single service | Vector Search / Agent Retrieval, RAG Engine (managed database, Pinecone or Weaviate) or Agent Search (fully managed) | Qdrant, Chroma, Weaviate, Milvus, pgvector, Elasticsearch / OpenSearch † |
+| 6. Permissions | Each user sees only their own content | Entra ID + group filter in the index | Google access control (IAM) + per-data-source access control in Agent Search | Metadata filters in the vector database † |
 
 #### Phase 2: Answering a question
 
 | Stage | What it does | Azure | Google Cloud | Open source |
 |----|----|----|----|----|
-| **7. Rewriting** | Standalone question; split complex questions | Semantic ranker query rewriting (preview); agentic search with planning (preview) | Agent Search: follow-up questions and answers with agentic search | LangChain MultiQueryRetriever, HyDE, LlamaIndex query transformations † |
-| **8. Keywords (BM25)** | Exact match | BM25 built into AI Search | **Vector Search**: you generate the sparse vector (BM25, TF-IDF or SPLADE) and upload it. **Agent Search**: managed | Elasticsearch/OpenSearch BM25; sparse vectors in Qdrant; SPLADE |
-| **9. Meaning** | Nearest neighbors | Vectors in AI Search | Vector Search / Agent Retrieval (milliseconds even with billions of items, according to Google) | Qdrant, Chroma, Weaviate, Milvus, pgvector † |
-| **10. Fusion** | Combine lists | **Automatic RRF** (k=60), with a configurable weight for vectors | **RRF** with `rrf_ranking_alpha` | RRF in Qdrant †, Weaviate hybrid search †, LangChain **EnsembleRetriever** † |
-| **11. Reranker** | Rerank by reading question and chunk together | **Semantic ranker**: the top 50, score 0–4 | **Ranking API**: `semantic-ranker-default-004` / `-fast-004` (1024 tokens, 25 languages, score 0–1, up to 1000 chunks per call). Version 005 has been in preview since Sep 1, 2026 and will become the default **no later than Oct 1, 2026** | **bge-reranker-v2-m3**, **Qwen3-Reranker** (Apache 2.0), **mxbai-rerank-v2** (Apache 2.0), ColBERTv2; or a language model as the reranker |
-| **12. Agent** | Chained searches | **Agentic search** / Foundry IQ (the language-model part in preview) | Agent Development Kit (ADK) + Agent Runtime; Gemini Deep Research agent | LangGraph, LlamaIndex agents † |
-| **13. GraphRAG** | Graph for global questions | Microsoft **GraphRAG** (open source) deployed on Azure; LazyGraphRAG in Microsoft Discovery | No managed equivalent found (as of 2026-09-23) | **GraphRAG** (Microsoft), **LightRAG**, **HippoRAG 2** |
+| 7. Rewriting | Standalone question; split complex questions | Semantic ranker query rewriting (preview); agentic search with planning (preview) | Agent Search: follow-up questions and answers with agentic search | LangChain MultiQueryRetriever, HyDE, LlamaIndex query transformations † |
+| 8. Keywords (BM25) | Exact match | BM25 built into AI Search | Vector Search: you generate the sparse vector (BM25, TF-IDF or SPLADE) and upload it. Agent Search: managed | Elasticsearch/OpenSearch BM25; sparse vectors in Qdrant; SPLADE |
+| 9. Meaning | Nearest neighbors | Vectors in AI Search | Vector Search / Agent Retrieval (milliseconds even with billions of items, according to Google) | Qdrant, Chroma, Weaviate, Milvus, pgvector † |
+| 10. Fusion | Combine lists | Automatic RRF (k=60), with a configurable weight for vectors | RRF with `rrf_ranking_alpha` | RRF in Qdrant †, Weaviate hybrid search †, LangChain EnsembleRetriever † |
+| 11. Reranker | Rerank by reading question and chunk together | Semantic ranker: the top 50, score 0–4 | Ranking API: `semantic-ranker-default-004` / `-fast-004` (1024 tokens, 25 languages, score 0–1, up to 1000 chunks per call). Version 005 has been in preview since Sep 1, 2026 and will become the default no later than Oct 1, 2026 | bge-reranker-v2-m3, Qwen3-Reranker (Apache 2.0), mxbai-rerank-v2 (Apache 2.0), ColBERTv2; or a language model as the reranker |
+| 12. Agent | Chained searches | Agentic search / Foundry IQ (the language-model part in preview) | Agent Development Kit (ADK) + Agent Runtime; Gemini Deep Research agent | LangGraph, LlamaIndex agents † |
+| 13. GraphRAG | Graph for global questions | Microsoft GraphRAG (open source) deployed on Azure; LazyGraphRAG in Microsoft Discovery | No managed equivalent found (as of 2026-09-23) | GraphRAG (Microsoft), LightRAG, HippoRAG 2 |
 
 #### Phase 3: Generation and guardrails
 
 | Stage | What it does | Azure | Google Cloud | Open source |
 |----|----|----|----|----|
-| **14. Writing model** | Answer with citations | GPT models in Azure OpenAI / Microsoft Foundry (also other models in Foundry †) | **Gemini** (3.x family); also Claude, Llama, Qwen and others in Model Garden | Llama, Qwen, Mistral, gpt-oss served with **vLLM** or **Ollama** † |
-| **15. Input protection** | Block manipulation attempts | Content Safety – Prompt Shields † | **Model Armor** | NeMo Guardrails, Llama Guard † |
-| **16. Faithfulness to the documents** | Is every sentence supported? | Groundedness evaluator; Groundedness Pro (preview) | **Check Grounding API**: 0–1 score per claim + citations, in under 500 ms | **HHEM-2.1-Open** (Vectara), MiniCheck |
+| 14. Writing model | Answer with citations | GPT models in Azure OpenAI / Microsoft Foundry (also other models in Foundry †) | Gemini (3.x family); also Claude, Llama, Qwen and others in Model Garden | Llama, Qwen, Mistral, gpt-oss served with vLLM or Ollama † |
+| 15. Input protection | Block manipulation attempts | Content Safety – Prompt Shields † | Model Armor | NeMo Guardrails, Llama Guard † |
+| 16. Faithfulness to the documents | Is every sentence supported? | Groundedness evaluator; Groundedness Pro (preview) | Check Grounding API: 0–1 score per claim + citations, in under 500 ms | HHEM-2.1-Open (Vectara), MiniCheck |
 
 #### Phase 4: Evaluation and monitoring
 
 | Stage | What it does | Azure | Google Cloud | Open source |
 |----|----|----|----|----|
-| **17. Evaluating retrieval** | Did it find the right thing? | **Document Retrieval** (NDCG, XDCG, Fidelity, Holes; needs labels) and **Retrieval** (judge, no labels) | **Evaluate search quality** in Agent Search; Agent Platform evaluation service | **RAGAS**, **DeepEval**, **RAGChecker**, **Open RAG Eval** (UMBRELA) |
-| **18. Evaluating the answer** | Faithful, relevant and complete? | Groundedness, Relevance, Response Completeness (preview); 1–5 scale, passes at 3 | Evaluation service with rubric-based metrics, a configurable judge and the option to **evaluate the judge itself** | RAGAS, DeepEval, **TruLens** ("RAG triad"), **ARES** (confidence intervals) |
-| **19. Continuous evaluation** | Evaluate samples of real traffic | Foundry **continuous evaluation**: configurable sampling, up to 1000/hour, results in Application Insights | **Online Monitors**: every ~10 min, configurable percentage and cap, results in Cloud Logging and Cloud Monitoring | Langfuse †, **Arize Phoenix**, **MLflow** |
-| **20. Traces** | See what happened at each step | Application Insights / Azure Monitor + OpenTelemetry | Cloud Trace, Cloud Logging, Cloud Monitoring + OpenTelemetry (`gen_ai.` attributes) | OpenTelemetry + Phoenix / Langfuse † |
-| **21. Deployment** | Where the app runs | Container Apps, App Service, AKS (Kubernetes) † | Cloud Run, GKE (Kubernetes), Agent Runtime | Docker + Kubernetes, FastAPI † |
+| 17. Evaluating retrieval | Did it find the right thing? | Document Retrieval (NDCG, XDCG, Fidelity, Holes; needs labels) and Retrieval (judge, no labels) | Evaluate search quality in Agent Search; Agent Platform evaluation service | RAGAS, DeepEval, RAGChecker, Open RAG Eval (UMBRELA) |
+| 18. Evaluating the answer | Faithful, relevant and complete? | Groundedness, Relevance, Response Completeness (preview); 1–5 scale, passes at 3 | Evaluation service with rubric-based metrics, a configurable judge and the option to evaluate the judge itself | RAGAS, DeepEval, TruLens ("RAG triad"), ARES (confidence intervals) |
+| 19. Continuous evaluation | Evaluate samples of real traffic | Foundry continuous evaluation: configurable sampling, up to 1000/hour, results in Application Insights | Online Monitors: every ~10 min, configurable percentage and cap, results in Cloud Logging and Cloud Monitoring | Langfuse †, Arize Phoenix, MLflow |
+| 20. Traces | See what happened at each step | Application Insights / Azure Monitor + OpenTelemetry | Cloud Trace, Cloud Logging, Cloud Monitoring + OpenTelemetry (`gen_ai.` attributes) | OpenTelemetry + Phoenix / Langfuse † |
+| 21. Deployment | Where the app runs | Container Apps, App Service, AKS (Kubernetes) † | Cloud Run, GKE (Kubernetes), Agent Runtime | Docker + Kubernetes, FastAPI † |
 
 #### Summary in one picture
 
@@ -1471,50 +1428,50 @@ Ana, a manager in Madrid, previously asked about her contract. Now she types: **
 | Evaluation | Foundry evaluators | Evaluation service | RAGAS / DeepEval / TruLens |
 | Production | Continuous evaluation | Online Monitors | Phoenix / MLflow / Langfuse |
 
-#### Three fundamental differences
+#### Three differences that matter
 
-1.  **Hybrid search.** In Azure AI Search, keyword search is included. In **Google Vector Search you have to generate the sparse vector yourself**; if you want Google to manage it, use Agent Search. In open source it depends on the database.
-2.  **Reranker.** Azure's reranks only the **top 50**. Google's Ranking API accepts **up to 1000 chunks** and works with any search engine, even an external one. In open source you control the model, cost and latency, but you also have to operate it.
-3.  **Evaluation.** Both clouds now offer offline evaluation and continuous evaluation on real traffic, with standard traces (OpenTelemetry). In open source, RAGAS or DeepEval (offline) plus Phoenix, MLflow or Langfuse (production) cover the same ground, but you do the integration yourself.
+1.  Hybrid search: Azure AI Search includes keyword search. In **Google Vector Search you have to generate the sparse vector yourself**; if you want Google to manage it, use Agent Search. In open source it depends on the database.
+2.  Reranker: Azure's reranks only the top 50. Google's Ranking API accepts up to 1000 chunks and works with any search engine, even an external one. In open source you control the model, cost and latency, but you also have to operate it.
+3.  Evaluation: both clouds now offer offline evaluation and continuous evaluation on real traffic, with standard traces (OpenTelemetry). In open source, RAGAS or DeepEval (offline) plus Phoenix, MLflow or Langfuse (production) cover the same ground, but you do the integration yourself.
 
 ## Appendix · Glossary
 
 | Term | Plain meaning |
 |----|----|
-| **Agentic search** | An agent splits the question and runs several searches |
-| **BM25** | Classic keyword search algorithm |
-| **Chunk** | A piece of a document that is indexed separately |
-| **Cohen's kappa** | A measure of agreement between two raters that discounts agreement by chance |
-| **Completeness** | That the answer doesn't leave out important information |
-| **Continuous integration (CI)** | Automated tests that run on every code change |
-| **Cross-encoder / bi-encoder** | Reads both texts together / turns each text into a vector separately |
-| **Dense / sparse** | A vector with all values active / a vector of weighted terms, almost all zero |
-| **Embedding / vector** | A list of numbers that represents the meaning of a text |
-| **Entra ID** | Microsoft's identity and access system |
-| **Golden dataset** | A set of questions with their correct answers and documents |
-| **GraphRAG** | RAG with a graph of entities and relationships |
-| **Groundedness / faithfulness** | That the answer says nothing that isn't in the documents |
-| **Hallucination** | When the model makes up information |
-| **HNSW** | A graph-shaped structure for quickly finding the nearest vectors |
-| **Hybrid search** | Combining keyword search and meaning-based search |
-| **IAM** | Google Cloud's access control system |
-| **Inverted index** | A "word → documents where it appears" table |
-| **kNN** | Finding the k nearest neighbors |
-| **Language model (LLM)** | The model that writes the answer (GPT, Gemini, Claude, Llama…) |
-| **LLM judge** | Another model that scores the answers |
-| **MMR** | A technique for removing redundant results |
-| **MRR** | How high up the first correct result appears |
-| **nDCG** | Ranking quality: whether the correct items are as high up as possible (Azure's evaluators spell it *NDCG*) |
-| **OpenTelemetry** | An open standard for recording traces and metrics |
-| **Parsing** | Converting a file (PDF, Word) into text with structure |
-| **Precision@k** | What fraction of the top k results is correct |
-| **Preview / GA** | Feature in testing / official, stable feature |
-| **Quantization** | Compressing the numbers in vectors to save memory |
-| **RAG** | Retrieval-augmented generation: searching your documents before answering |
-| **Recall@k** | What fraction of the correct items appears in the top k results |
-| **Reranker** | A model that reorders the candidates by reading the question and the chunk together |
-| **RRF** | Reciprocal rank fusion: combining lists using only positions |
-| **SPLADE / ELSER** | Models that expand text with related terms (learned sparse) |
+| Agentic search | An agent splits the question and runs several searches |
+| BM25 | Classic keyword search algorithm |
+| Chunk | A piece of a document that is indexed separately |
+| Cohen's kappa | A measure of agreement between two raters that discounts agreement by chance |
+| Completeness | That the answer doesn't leave out important information |
+| Continuous integration (CI) | Automated tests that run on every code change |
+| Cross-encoder / bi-encoder | Reads both texts together / turns each text into a vector separately |
+| Dense / sparse | A vector with all values active / a vector of weighted terms, almost all zero |
+| Embedding / vector | A list of numbers that represents the meaning of a text |
+| Entra ID | Microsoft's identity and access system |
+| Golden dataset | A set of questions with their correct answers and documents |
+| GraphRAG | RAG with a graph of entities and relationships |
+| Groundedness / faithfulness | That the answer says nothing that isn't in the documents |
+| Hallucination | When the model makes up information |
+| HNSW | A graph-shaped structure for quickly finding the nearest vectors |
+| Hybrid search | Combining keyword search and meaning-based search |
+| IAM | Google Cloud's access control system |
+| Inverted index | A "word → documents where it appears" table |
+| kNN | Finding the k nearest neighbors |
+| Language model (LLM) | The model that writes the answer (GPT, Gemini, Claude, Llama…) |
+| LLM judge | Another model that scores the answers |
+| MMR | A technique for removing redundant results |
+| MRR | How high up the first correct result appears |
+| nDCG | Ranking quality: whether the correct items are as high up as possible (Azure's evaluators spell it *NDCG*) |
+| OpenTelemetry | An open standard for recording traces and metrics |
+| Parsing | Converting a file (PDF, Word) into text with structure |
+| Precision@k | What fraction of the top k results is correct |
+| Preview / GA | Feature in testing / official, stable feature |
+| Quantization | Compressing the numbers in vectors to save memory |
+| RAG | Retrieval-augmented generation: searching your documents before answering |
+| Recall@k | What fraction of the correct items appears in the top k results |
+| Reranker | A model that reorders the candidates by reading the question and the chunk together |
+| RRF | Reciprocal rank fusion: combining lists using only positions |
+| SPLADE / ELSER | Models that expand text with related terms (learned sparse) |
 
 ## Appendix · References
 
@@ -1615,5 +1572,3 @@ Ana, a manager in Madrid, previously asked about her contract. Now she types: **
 - Vectara, *Open RAG Eval* — <https://github.com/vectara/open-rag-eval>
 - DeepEval, *Metrics* — <https://deepeval.com/docs/metrics-introduction>
 - Databricks, *Scorers and LLM judges* — <https://docs.databricks.com/aws/en/mlflow3/genai/eval-monitor/concepts/scorers>
-
-RAG End to End: A Practical Tutorial · compiled 2026-09-23. Facts marked † were not re-verified against official documentation on that date; features marked (preview) are not generally available.
