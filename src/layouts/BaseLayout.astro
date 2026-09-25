@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import TabBar from '../components/TabBar.astro';
+import Footer from '../components/Footer.astro';
 import { LANGS, HTML_LANG, OG_LOCALE, type Lang } from '../i18n/langs.ts';
 import { localePath } from '../i18n/paths.ts';
 import { t } from '../i18n/ui.ts';
@@ -58,6 +59,7 @@ const abs = (l: Lang) => new URL(localePath(l, path), site).href;
     <a class="skip" href="#main">{t(lang, 'a11y.skip')}</a>
     <TabBar lang={lang} path={path} section={section} />
     <main id="main" class="term"><slot /></main>
+    <Footer lang={lang} path={path} />
     <script>
       import { initModeToggle } from '../scripts/mode.ts';
       initModeToggle();

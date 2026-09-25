@@ -22,7 +22,7 @@ const tabs: { id: Section; label: string; href: string }[] = [
     {tabs.map((tab) => <a class="tab" href={tab.href} aria-current={tab.id === section ? 'page' : undefined}>{tab.label}</a>)}
   </nav>
   <span class="spacer"></span>
-  <button class="mode" type="button" data-mode-toggle data-reader={t(lang, 'mode.reader')} data-terminal={t(lang, 'mode.terminal')} aria-label={t(lang, 'mode.toggle')} aria-pressed="false">[<span data-label>{t(lang, 'mode.reader')}</span>]</button>
+  <button class="mode" type="button" data-mode-toggle data-reader={t(lang, 'mode.reader')} data-terminal={t(lang, 'mode.terminal')} title={t(lang, 'mode.toggle')} aria-pressed="false">[<span data-label>{t(lang, 'mode.reader')}</span>]</button>
   <nav class="langs" aria-label={t(lang, 'lang.label')}>
     {LANGS.map((l) => <a href={localePath(l, path)} hreflang={l} lang={l} aria-current={l === lang ? 'true' : undefined}>{l}</a>)}
   </nav>

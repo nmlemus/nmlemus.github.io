@@ -1,0 +1,36 @@
+---
+import { LANGS, type Lang } from '../i18n/langs.ts';
+import { localePath } from '../i18n/paths.ts';
+import { t } from '../i18n/ui.ts';
+import { links } from '../data/profile.ts';
+
+interface Props {
+  lang: Lang;
+  path: string;
+}
+const { lang, path } = Astro.props;
+---
+<footer class="status">
+  <span class="session" aria-hidden="true">[nmlemus]</span>
+  <nav class="links" aria-label={t(lang, 'footer.label')}>
+    {links.map((l) => <a href={l.href} rel="me">{l.label}</a>)}
+    <a href={localePath(lang, 'rss.xml')}>rss</a>
+  </nav>
+  <span class="spacer"></span>
+  <nav class="langs" aria-label={t(lang, 'lang.label')}>
+    {LANGS.map((l) => <a href={localePath(l, path)} hreflang={l} lang={l} aria-current={l === lang ? 'true' : undefined}>{l}</a>)}
+  </nav>
+  <span class="owner">© {new Date().getUTCFullYear()} Noel Moreno Lemus</span>
+</footer>
+<style>
+  /* tmux-style status line */
+  .status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; padding: 6px 16px; margin-top: 48px; background: var(--p10k-ok); color: #000; font: 13px/1.6 var(--mono); }
+  .session { font-weight: 700; }
+  .links, .langs { display: flex; gap: 14px; flex-wrap: wrap; }
+  .status a { color: #000; text-decoration: underline; text-underline-offset: 3px; padding: 2px 0; }
+  .langs a[aria-current='true'] { font-weight: 700; text-decoration: none; background: #000; color: var(--p10k-ok); padding: 0 6px; }
+  .spacer { flex: 1; }
+  :global(:root[data-mode='reader']) .status { background: var(--bg-2); color: var(--text); font-family: var(--serif); border-top: 1px solid var(--line); }
+  :global(:root[data-mode='reader']) .status a { color: var(--link); }
+  :global(:root[data-mode='reader']) .langs a[aria-current='true'] { background: none; color: var(--strong); text-decoration: underline; }
+</style>
