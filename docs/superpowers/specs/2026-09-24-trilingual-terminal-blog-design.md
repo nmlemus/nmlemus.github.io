@@ -169,11 +169,12 @@ título, nombre del autor y dominio. Fuentes TTF para satori guardadas en el rep
 
 ### Dependencias (aprobadas por el autor)
 
-`astro`, `@astrojs/sitemap`, `@astrojs/rss`, `remark-math`, `rehype-katex`, `satori`, `@resvg/resvg-js`.
+`astro`, `@astrojs/sitemap`, `@astrojs/rss`, `remark-math`, `rehype-katex`, `satori`, `@resvg/resvg-js`, más `@astrojs/markdown-remark` y `katex` (añadidas 2026-09-24 tras el spike de matemáticas: Astro 7 usa Sätteri por defecto, que no ejecuta plugins remark/rehype; `katex` fijado a la versión que usa rehype-katex para que el CSS coincida).
 Tests con `node:test` (incluido en Node, sin dependencia extra). Cualquier dependencia adicional requiere preguntar primero.
 
 ## 9. Verificación
 
+0. **Matemáticas**: test que falla si la versión de `katex` difiere de la que usa `rehype-katex`; el verificador post-build falla si hay `katex-error` en alguna página.
 1. **TDD del validador**: tests que fallan primero para cada regla de §4 (falta idioma, `date` distinta, `tags` distintas, draft excluido, caso válido).
 2. `astro check` sin errores.
 3. **Verificación post-build** (script propio sobre `dist/`): cada artículo tiene `canonical` y los 4 `hreflang` apuntando a URLs existentes; los 3 RSS parsean y listan los mismos slugs; ningún enlace interno roto.

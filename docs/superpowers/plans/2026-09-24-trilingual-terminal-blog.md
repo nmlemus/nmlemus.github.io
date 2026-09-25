@@ -6,7 +6,7 @@
 
 **Architecture:** Astro 7 SSG. One set of page files under `src/pages/[...lang]/` serves all three languages (EN unprefixed, ES/PT prefixed). All content access goes through `getPostGroups()`, which runs a pure, unit-tested validator that fails the build on missing translations or divergent metadata. Post-build, a small script checks links, hreflang and feed parity in `dist/`.
 
-**Tech Stack:** Astro 7.3.5 (Sätteri markdown, Shiki), @astrojs/sitemap 3.7.4, @astrojs/rss 4.0.19, satori 0.33.5, @resvg/resvg-js 2.6.2, Node 24 LTS, `node:test`.
+**Tech Stack:** Astro 7.3.5 (unified markdown pipeline via @astrojs/markdown-remark 7.3.1 + remark-math 6.0.0 + rehype-katex 7.0.1 + katex 0.16.47, Shiki), @astrojs/sitemap 3.7.4, @astrojs/rss 4.0.19, satori 0.33.5, @resvg/resvg-js 2.6.2, Node 24 LTS, `node:test`.
 
 **Spec:** `docs/superpowers/specs/2026-09-24-trilingual-terminal-blog-design.md`
 
@@ -14,8 +14,10 @@
 
 - Languages: `en` (default, no URL prefix), `es`, `pt` (Brazilian Portuguese; BCP-47 `pt-BR` in `lang`/`hreflang`).
 - Identical slug across languages; post folder = `src/content/blog/<slug>/{en,es,pt}.md`.
-- Dependencies allowed: exactly `astro`, `@astrojs/sitemap`, `@astrojs/rss`, `satori`, `@resvg/resvg-js` (pinned, `--save-exact`). Anything else: ask the author first.
-- **Spec deviations (need author approval):** (1) no math — Astro 7's default Sätteri pipeline doesn't run `remark-math`/`rehype-katex`; none of the initial posts need LaTeX. (2) no `astro check` — it needs `@astrojs/check` + `typescript`; type safety for UI strings is covered by a unit test instead.
+- Dependencies allowed: exactly `astro`, `@astrojs/sitemap`, `@astrojs/rss`, `satori`, `@resvg/resvg-js`, `@astrojs/markdown-remark`, `remark-math`, `rehype-katex`, `katex` (pinned, `--save-exact`). Anything else: ask the author first.
+- **Math (spiked 2026-09-24, verified visually):** Astro 7 defaults to the Sätteri markdown engine, which does not run remark/rehype plugins, so the site opts into the `unified()` processor from `@astrojs/markdown-remark`. `katex` MUST be the exact version `rehype-katex` bundles (0.16.47 today): a CSS/renderer version mismatch silently breaks subscripts (`\pi_\theta` rendered as `πθ`). A unit test guards this.
+- **Spec deviation:** no `astro check` (needs `@astrojs/check` + `typescript`); UI-string completeness is covered by a unit test instead.
+- Currency in prose must be written `\$5`: with remark-math, `$5 to $10` becomes inline math.
 - Client JS: only the mode toggle and copy-link button.
 - No third-party requests at runtime (fonts self-hosted).
 - Text contrast ≥ 4.5:1 in all three modes (tokens below are pre-computed to pass).
@@ -26,7 +28,8 @@
 
 1. A tag or folder name with capitals/accents/spaces (`IA Generativa`, `Mi_Post`) → build fails with a clear message instead of producing broken URLs. (Task 2 test)
 2. A stray file in a post folder (`notes.md`, `fr.md`) → build fails, never silently published. (Task 2 test)
-3. All posts are drafts / zero posts → site still builds; home, blog and RSS render an empty list. (Task 2 test + Task 7 build check)
+3. KaTeX upgraded by `npm update` so its CSS no longer matches rehype-katex's renderer → subscripts break silently. Expect: test fails. (Task 1 test) Also a LaTeX typo in a post → `katex-error` span in the page; expect `verify` to fail. (Task 7 test)
+6. All posts are drafts / zero posts → site still builds; home, blog and RSS render an empty list. (Task 2 test + Task 7 build check)
 4. `date: 2026-09-10` viewed from a UTC-5 machine → shows 2026-09-10, not 09-09. (Task 2 test with `TZ`)
 5. Long code lines / box tables on a 360px phone → no horizontal page scroll; only the code block scrolls. (Task 5 visual check)
 
@@ -100,6 +103,9 @@ git rm -r -q .gitattributes .github 404.html CHANGELOG.md Gemfile LICENSE README
 ```js
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
+import { unified } from '@astrojs/markdown-remark';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 export default defineConfig({
   site: 'https://nmlemus.github.io',
@@ -107,6 +113,8 @@ export default defineConfig({
     sitemap({ i18n: { defaultLocale: 'en', locales: { en: 'en', es: 'es', pt: 'pt-BR' } } }),
   ],
   markdown: {
+    // Sätteri (Astro 7 default) doesn't run remark/rehype plugins; unified is required for math.
+    processor: unified({ remarkPlugins: [remarkMath], rehypePlugins: [rehypeKatex] }),
     shikiConfig: { themes: { light: 'solarized-light', dark: 'solarized-dark' } },
   },
 });
@@ -134,13 +142,33 @@ dist/
 - [ ] **Step 3: Install pinned deps and confirm Shiki themes exist**
 
 ```bash
-npm install --save-exact astro@7.3.5 @astrojs/sitemap@3.7.4 @astrojs/rss@4.0.19 satori@0.33.5 @resvg/resvg-js@2.6.2
+npm install --save-exact astro@7.3.5 @astrojs/sitemap@3.7.4 @astrojs/rss@4.0.19 satori@0.33.5 @resvg/resvg-js@2.6.2 \
+  @astrojs/markdown-remark@7.3.1 remark-math@6.0.0 rehype-katex@7.0.1 katex@0.16.47
 node -e "import('shiki').then(({bundledThemes:b})=>console.log(['solarized-dark','solarized-light'].map(t=>t+':'+(t in b)).join(' ')))"
 ```
 Expected: `solarized-dark:true solarized-light:true`. If false, stop and pick the closest bundled theme with the author.
 
-- [ ] **Step 4: Build** — `npm run build` → exit 0, `dist/index.html` exists.
-- [ ] **Step 5: Commit** — `git add -A && git commit -m "chore: replace Jekyll template with Astro scaffold"`
+- [ ] **Step 4: KaTeX version guard** — `tests/katex-version.test.mjs`:
+```js
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+
+const versionOf = (req) => JSON.parse(readFileSync(join(dirname(req.resolve('katex')), '..', 'package.json'), 'utf8')).version;
+
+// The site loads katex's CSS; rehype-katex renders with its own katex. Different versions break layout silently.
+test('KaTeX CSS matches the KaTeX that rehype-katex renders with', () => {
+  const site = createRequire(import.meta.url);
+  const rehype = createRequire(import.meta.resolve('rehype-katex'));
+  assert.equal(versionOf(site), versionOf(rehype));
+});
+```
+Run `npm test` → PASS. (Spike proved it FAILS with katex 0.18.9.)
+
+- [ ] **Step 5: Build** — `npm run build` → exit 0, `dist/index.html` exists.
+- [ ] **Step 6: Commit** — `git add -A && git commit -m "chore: replace Jekyll template with Astro scaffold"`
 
 ---
 
@@ -722,6 +750,8 @@ p { margin: 0; }
 .md th, .md td { border: 1px solid var(--muted); padding: 5px 12px; text-align: left; }
 .md th { color: var(--key); font-weight: 400; }
 .md img { max-width: 100%; height: auto; }
+.md .katex { font-size: 1.1em; }
+.md .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
 .md hr { border: 0; border-top: 1px dashed var(--line); margin: 28px 0; }
 .md sup a, .md .footnotes a { color: var(--fn); }
 .md .footnotes { border-top: 1px dashed var(--line); margin-top: 28px; padding-top: 10px; }
@@ -981,7 +1011,13 @@ const abs = (l: Lang) => new URL(localePath(l, path), site).href;
 
 **Interfaces — Consumes:** `getPosts`, `getTags`, `langParams`, `localePath`, `t`, `isoDate`, `readingMinutes`, `BaseLayout`, `Prompt`, `person`.
 
-- [ ] **Step 1: Seed a throwaway fixture** so pages have data: `src/content/blog/fixture/{en,es,pt}.md` with frontmatter `title: Fixture`, `description: Fixture post`, `date: 2026-01-01`, `tags: [test]`, body with an `## h2`, a table, a fenced `python` block, a footnote `[^1]`. (Removed in Task 7.)
+- [ ] **Step 1: Seed a throwaway fixture** so pages have data: `src/content/blog/fixture/{en,es,pt}.md` with frontmatter `title: Fixture`, `description: Fixture post`, `date: 2026-01-01`, `tags: [test]`, body with an `## h2`, a table, a fenced `python` block, a footnote `[^1]`, inline math `$\pi_\theta(a_i \mid s_i)$`, and display math:
+```
+$$
+\Sigma = \begin{pmatrix} \sigma_1^2 & \rho\sigma_1\sigma_2 \\ \rho\sigma_1\sigma_2 & \sigma_2^2 \end{pmatrix}
+$$
+```
+(Removed in Task 8.)
 
 - [ ] **Step 2: `src/components/PostList.astro`**
 ```astro
@@ -1189,6 +1225,7 @@ const others = LANGS.filter((l) => l !== lang);
 ```astro
 ---
 import { render } from 'astro:content';
+import 'katex/dist/katex.min.css';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import Prompt from '../../../components/Prompt.astro';
 import Frontmatter from '../../../components/Frontmatter.astro';
@@ -1262,7 +1299,7 @@ const share = {
 ```
 In reader mode the share prompt's `l2` is hidden by `Prompt`; add to `Prompt.astro`'s style: `:global(:root[data-mode='reader']) .l2:has(:global(.copy)) { display: flex; justify-content: center; }` (`.copy` must be `:global` — it lives in the page's style scope, not Prompt's) so sharing stays available.
 
-- [ ] **Step 4: Verify** — `npm run build`; open `npm run dev` → `/blog/fixture/`, `/es/blog/fixture/`: YAML block, `also_in` links jump to the same post in the other language, code block has Solarized colors, footnote renders, table scrolls inside itself. Toggle reader: centered sepia layout, prompts hidden, share still visible.
+- [ ] **Step 4: Verify** — `npm run build`; open `npm run dev` → `/blog/fixture/`, `/es/blog/fixture/`: YAML block, `also_in` links jump to the same post in the other language, code block has Solarized colors, footnote renders, table scrolls inside itself, math renders with real subscripts (π_θ, σ₁σ₂ — zoom in; `πθ` at full size means the KaTeX versions diverged). Toggle reader: centered sepia layout, prompts hidden, share still visible.
 - [ ] **Step 5: Mobile check (Review Focus 5)** — in the browser at 360px width, on the fixture article: `document.documentElement.scrollWidth <= innerWidth` is `true` in both modes.
 - [ ] **Step 6: Commit** — `git add -A && git commit -m "feat: article page with frontmatter, toc and sharing"`
 
@@ -1562,6 +1599,11 @@ test('article missing hreflang fails', () => {
   assert.match(checkPage({ file: 'a', html, site: SITE, exists: all, isArticle: true }).join(), /hreflang set/);
 });
 
+test('KaTeX render errors fail the page', () => {
+  const html = '<span class="katex-error" title="ParseError">\\frac{1}</span>';
+  assert.match(checkPage({ file: 'm', html, site: SITE, exists: all, isArticle: false }).join(), /m: KaTeX error/);
+});
+
 test('feeds must list the same slugs', () => {
   const feed = (...s) => `<rss>${s.map((x) => `<item><link>${SITE}blog/${x}/</link></item>`).join('')}</rss>`;
   assert.deepEqual(feedSlugs(feed('b', 'a')), ['a', 'b']);
@@ -1712,6 +1754,7 @@ export function checkPage({ file, html, site, exists, isArticle }) {
   const problems = hrefs
     .filter((href) => { const p = toDistPath(href, site); return p !== null && !exists(p); })
     .map((href) => `${file}: broken link ${href}`);
+  if (html.includes('katex-error')) problems.push(`${file}: KaTeX error (invalid LaTeX)`);
   if (!isArticle) return problems;
   if (!canonical) problems.push(`${file}: missing canonical`);
   const langs = alternates.map((a) => a.hreflang).sort().join();
@@ -1781,7 +1824,7 @@ console.log('verify-dist: ok');
 | `safe-vibe-coding` | An Essential Guide to Safe Development Practices in the Era of Vibe Coding | `[vibe-coding, safety]` |
 
 `description`: one sentence written from the post itself. `date`: the real publication date.
-- [ ] **Step 3: ES and PT (pt-BR)** — translate with the same frontmatter (`title`/`description` translated, `date`/`tags` identical). Don't translate code, commands, product names, or technical terms usually kept in English (agent, prompt, harness, token, pipeline, MCP).
+- [ ] **Step 3: ES and PT (pt-BR)** — translate with the same frontmatter (`title`/`description` translated, `date`/`tags` identical). Don't translate code, LaTeX, commands, product names, or technical terms usually kept in English (agent, prompt, harness, token, pipeline, MCP). Currency is written `\$`.
 - [ ] **Step 4: Remove fixture, build, verify** — `rm -r src/content/blog/fixture && npm test && npm run build && npm run verify` → all green, 3 posts × 3 languages.
 - [ ] **Step 5: Commit** — `git add -A && git commit -m "content: migrate three LinkedIn posts in EN/ES/PT"`
 
@@ -1838,7 +1881,7 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v5
 ```
-- [ ] **Step 3: `README.md`** — sections: what this is; `npm install` / `npm run dev` / `npm test` / `npm run build && npm run verify`; **Writing a post** (folder layout, frontmatter table, `draft: true`, "ask Claude Code: translate post `<slug>`", review, push); **Modes** (terminal dark/light, reader); **Fonts & licenses** (`public/fonts/LICENSE-*`).
+- [ ] **Step 3: `README.md`** — sections: what this is; `npm install` / `npm run dev` / `npm test` / `npm run build && npm run verify`; **Writing a post** (folder layout, frontmatter table, `draft: true`, "ask Claude Code: translate post `<slug>`", review, push); **Math** (`$inline$`, `$$display$$`, KaTeX; write currency as `\$5`; keep `katex` pinned to rehype-katex's version); **Modes** (terminal dark/light, reader); **Fonts & licenses** (`public/fonts/LICENSE-*`).
 - [ ] **Step 4: Final local QA** — `npm run build && npm run preview`; Lighthouse (Chrome DevTools) on `/` and `/blog/the-model-decides-what/`: ≥95 in all four categories, fix what's flagged. Check the 3 modes at 360px and desktop.
 - [ ] **Step 5: Commit & push branch, open PR** — `git add -A && git commit -m "ci: deploy to GitHub Pages via Actions"`; `git push -u origin astro-rewrite`; `gh pr create --base master` (body ends with the PR attribution line). Wait for CI green on the PR.
 - [ ] **Step 6: Author review** — the author reads all EN/ES/PT texts in the preview. Apply requested changes.
