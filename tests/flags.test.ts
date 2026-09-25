@@ -27,3 +27,7 @@ test('spoken languages: Spanish native, English and Portuguese professional', ()
 });
 
 const _typecheck: FlagCode[] = ['cu', 'pa', 'br', 'es', 'us'];
+
+test('every job and degree has its dates', () => {
+  for (const item of [...history, ...education]) assert.ok(item.when.trim(), `missing dates: ${item.what.en}`);
+});
