@@ -79,7 +79,7 @@ p { margin: 0; }
 .md th { color: var(--key); font-weight: 400; }
 .md img { max-width: 100%; height: auto; }
 .md .katex { font-size: 1.1em; }
-.md .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+.md .katex-display { font-size: 17.5px; overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
 .md hr { border: 0; border-top: 1px dashed var(--line); margin: 28px 0; }
 .md sup a, .md .footnotes a { color: var(--fn); }
 .md .footnotes { border-top: 1px dashed var(--line); margin-top: 28px; padding-top: 10px; }
