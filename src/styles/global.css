@@ -36,7 +36,7 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 400 14.5px/1.6 var(--mono); overflow-x: hidden; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 400 14.5px/1.6 var(--mono); }
 a { color: var(--link); text-decoration: none; }
 a:hover { text-decoration: underline; }
 :focus-visible { outline: 2px solid var(--p10k-dir); outline-offset: 2px; }
@@ -64,6 +64,8 @@ p { margin: 0; }
 .md h3 { font: 700 15px/1.4 var(--mono); color: var(--strong); margin: 24px 0 8px; }
 .md h3::before { content: '### '; color: var(--muted); font-weight: 400; }
 .md p, .md li { font: 400 17.5px/1.72 var(--serif); color: var(--prose); }
+/* URLs, paths and long identifiers must wrap on phones, never overflow. */
+.md p, .md li, .md td, .md th { overflow-wrap: anywhere; }
 .md p { margin: 0 0 16px; max-width: 70ch; }
 .md ul, .md ol { margin: 0 0 16px; padding-left: 1.4em; max-width: 68ch; }
 .md li { margin-bottom: 6px; }

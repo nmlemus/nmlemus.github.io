@@ -3,6 +3,7 @@ import sitemap from '@astrojs/sitemap';
 import { unified } from '@astrojs/markdown-remark';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import { contrastTransformer } from './src/lib/shiki-contrast.ts';
 
 export default defineConfig({
   site: 'https://nmlemus.github.io',
@@ -14,6 +15,6 @@ export default defineConfig({
   markdown: {
     // Sätteri (Astro 7 default) doesn't run remark/rehype plugins; unified is required for math.
     processor: unified({ remarkPlugins: [remarkMath], rehypePlugins: [rehypeKatex] }),
-    shikiConfig: { themes: { light: 'solarized-light', dark: 'solarized-dark' } },
+    shikiConfig: { themes: { light: 'solarized-light', dark: 'solarized-dark' }, transformers: [contrastTransformer] },
   },
 });

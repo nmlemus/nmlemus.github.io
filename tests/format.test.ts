@@ -1,3 +1,5 @@
+// Pin a UTC-5 zone so CI (which runs in UTC) still catches local-time date bugs.
+process.env.TZ = 'America/Panama';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { isoDate, longDate } from '../src/lib/format.ts';
