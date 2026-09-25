@@ -1,0 +1,41 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Prompt from '../../components/Prompt.astro';
+import { langParams } from '../../i18n/paths.ts';
+import { t } from '../../i18n/ui.ts';
+import type { Lang } from '../../i18n/langs.ts';
+import { bio, history, education, links } from '../../data/profile.ts';
+import { person } from '../../lib/jsonld.ts';
+
+export function getStaticPaths() {
+  return langParams();
+}
+const { lang } = Astro.props as { lang: Lang };
+---
+<BaseLayout lang={lang} path="about/" section="about" title={`${t(lang, 'meta.aboutTitle')} — Noel Moreno Lemus`} description={t(lang, 'meta.aboutDescription')} jsonLd={person(Astro.site!)}>
+  <Prompt dir="~">
+    <Fragment slot="cmd">cat <span class="arg">about.md</span></Fragment>
+    <div class="md">
+      <h1><span class="hash" aria-hidden="true"># </span>Noel Moreno Lemus</h1>
+      {bio[lang].map((p) => <p>{p}</p>)}
+    </div>
+  </Prompt>
+  <Prompt dir="~">
+    <Fragment slot="cmd">git log <span class="arg">--pretty='%ad %s' --date=short</span></Fragment>
+    <ul class="log">{history.map((i) => <li><span class="when">{i.when}</span> {i.what[lang]}</li>)}</ul>
+  </Prompt>
+  <Prompt dir="~">
+    <Fragment slot="cmd">ls <span class="arg">education/</span></Fragment>
+    <ul class="log">{education.map((i) => <li><span class="when">{i.when}</span> {i.what[lang]}</li>)}</ul>
+  </Prompt>
+  <Prompt dir="~">
+    <Fragment slot="cmd">cat <span class="arg">links.txt</span></Fragment>
+    <ul class="log">{links.map((l) => <li><span class="when">{l.label}</span> <a href={l.href} rel="me">{l.href.replace(/^https?:\/\//, '')}</a></li>)}</ul>
+  </Prompt>
+</BaseLayout>
+<style>
+  .log { list-style: none; margin: 0; padding: 0; }
+  .log li { display: grid; grid-template-columns: 11ch minmax(0, 1fr); column-gap: 2ch; padding: 3px 0; overflow-wrap: anywhere; }
+  .when { color: var(--key); }
+  :global(:root[data-mode='reader']) .log li { font-family: var(--serif); font-size: 17px; }
+</style>
