@@ -126,15 +126,19 @@ O jeito mais fácil de ver como as peças se encaixam é pensar em uma bibliotec
 O resto do tutorial segue a mesma ordem: preparar os documentos (etapas 1 a 3), busca (4), reranking (5), geração (6) e avaliação (7).
 
 
-Gao et al. (2023/24) descrevem a evolução da área em três estágios:
+Nem todo sistema RAG tem as sete etapas. Gao et al. (2023/24) distinguem três gerações:
 
-| Estágio | Ideia |
+| Geração | Ideia |
 |----|----|
 | Naive RAG | Indexar → recuperar os top k → colar no prompt |
 | Advanced RAG | Melhorar as coisas antes da busca (reescrever a pergunta, fazer um chunking melhor) e depois dela (reranking, compressão) |
 | Modular RAG | Peças intercambiáveis; fluxos adaptativos, iterativos e agênticos |
 
+Nos termos da biblioteca, o Naive RAG é um bibliotecário que passa as primeiras k fichas direto para o redator, sem o especialista no meio. Este tutorial descreve um Advanced RAG, com peças modulares onde elas compensam (seção 10).
+
 ### 2. Os três circuitos de um sistema RAG em produção
+
+Um sistema RAG em produção funciona com três circuitos. O primeiro prepara os documentos uma única vez, offline: fontes, parsing e chunking, embeddings e índice (etapas 1 a 3 da biblioteca). O segundo roda a cada pergunta: busca híbrida, reranker e o modelo que responde com citações (etapas 4 a 6). O terceiro avalia, antes do deploy com um golden dataset e em produção com amostras do tráfego real, e devolve melhorias para os outros dois (etapa 7). As partes II a VI tratam deles nessa ordem.
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 528" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rag-circuitos-title rag-circuitos-desc">
