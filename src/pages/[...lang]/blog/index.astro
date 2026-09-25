@@ -18,6 +18,6 @@ const posts = await getPosts(lang);
   <Prompt dir="~">
     <Fragment slot="cmd">ls -t <span class="arg">writing/</span></Fragment>
     <PostList lang={lang} posts={posts} />
-    <p class="total">{posts.length} {t(lang, 'list.entries')} · <a href={localePath(lang, 'rss.xml')}>rss.xml</a></p>
+    <p class="total">{t(lang, 'list.entries')}: {posts.length} · <a href={localePath(lang, 'rss.xml')}>rss.xml</a></p>
   </Prompt>
 </BaseLayout>

@@ -33,5 +33,6 @@ const statusColor = status === 'ok' ? 'var(--p10k-ok)' : 'var(--p10k-err)';
   @media (max-width: 600px) { .right, .gap { display: none; } }
   :global(:root[data-mode='reader']) .l1, :global(:root[data-mode='reader']) .l2 { display: none; }
   :global(:root[data-mode='reader']) .l2:has(:global(.copy)) { display: flex; justify-content: center; }
+  :global(:root[data-mode='reader']) .l2 .frame, :global(:root[data-mode='reader']) .l2 .char { display: none; }
   :global(:root[data-mode='reader']) .prompt { margin-top: 36px; }
 </style>

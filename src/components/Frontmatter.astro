@@ -1,0 +1,29 @@
+---
+import { LANGS, type Lang } from '../i18n/langs.ts';
+import { localePath } from '../i18n/paths.ts';
+import { isoDate } from '../lib/format.ts';
+
+interface Props {
+  lang: Lang;
+  slug: string;
+  title: string;
+  date: Date;
+  minutes: number;
+  tags: string[];
+}
+const { lang, slug, title, date, minutes, tags } = Astro.props;
+const others = LANGS.filter((l) => l !== lang);
+---
+<div class="fm reader-hide">
+  <span aria-hidden="true">---</span>
+  <div><span class="k">title:</span> {title}</div>
+  <div><span class="k">date:</span> <time datetime={isoDate(date)}>{isoDate(date)}</time> <span class="k">read:</span> {minutes} min</div>
+  <div><span class="k">tags:</span> [{tags.map((tag, i) => <>{i > 0 && ', '}<a href={localePath(lang, `blog/tags/${tag}/`)}>{tag}</a></>)}]</div>
+  <div><span class="k">also_in:</span> [{others.map((l, i) => <>{i > 0 && ', '}<a href={localePath(l, `blog/${slug}/`)} hreflang={l} lang={l}>{l}</a></>)}]</div>
+  <span aria-hidden="true">---</span>
+</div>
+<style>
+  .fm { display: flex; flex-direction: column; color: var(--muted); }
+  .k { color: var(--key); }
+  .fm div { color: var(--text); overflow-wrap: anywhere; }
+</style>
