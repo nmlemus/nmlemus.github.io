@@ -1,9 +1,11 @@
 import type { Lang } from '../i18n/langs.ts';
+import type { FlagCode } from '../lib/flags.ts';
 
 export type Localized = Record<Lang, string>;
 export interface LogItem {
   when: string;
   what: Localized;
+  country: FlagCode;
 }
 
 // Every fact here comes from the author's LinkedIn profile (snapshot 2026-09-24).
@@ -30,18 +32,32 @@ export const bio: Record<Lang, string[]> = {
 };
 
 export const history: LogItem[] = [
-  { when: '2022-05', what: { en: 'Senior Data Scientist @ Procter & Gamble, Panama', es: 'Senior Data Scientist @ Procter & Gamble, Panamá', pt: 'Senior Data Scientist @ Procter & Gamble, Panamá' } },
-  { when: '2019-09', what: { en: 'Data Scientist @ Procter & Gamble', es: 'Data Scientist @ Procter & Gamble', pt: 'Data Scientist @ Procter & Gamble' } },
-  { when: '2018-08', what: { en: 'Postdoctoral Researcher @ Universidade Federal Fluminense, Rio de Janeiro', es: 'Investigador posdoctoral @ Universidade Federal Fluminense, Río de Janeiro', pt: 'Pesquisador de pós-doutorado @ Universidade Federal Fluminense, Rio de Janeiro' } },
-  { when: '2014-02', what: { en: 'Scientific Researcher (AI Innovation) @ Dell EMC, Rio de Janeiro', es: 'Investigador científico (Innovación en IA) @ Dell EMC, Río de Janeiro', pt: 'Pesquisador científico (Inovação em IA) @ Dell EMC, Rio de Janeiro' } },
-  { when: '2004-09', what: { en: 'Head of the Bioinformatics R&D Group @ UCI, Havana', es: 'Jefe del Grupo de I+D en Bioinformática @ UCI, La Habana', pt: 'Chefe do Grupo de P&D em Bioinformática @ UCI, Havana' } },
-  { when: '2003-09', what: { en: 'Project Manager, BioSyS @ UCI', es: 'Jefe de proyecto, BioSyS @ UCI', pt: 'Gerente de projeto, BioSyS @ UCI' } },
-  { when: '2002-09', what: { en: 'Assistant Professor @ UCI', es: 'Profesor asistente @ UCI', pt: 'Professor assistente @ UCI' } },
+  { when: '2022-05', what: { en: 'Senior Data Scientist @ Procter & Gamble, Panama', es: 'Senior Data Scientist @ Procter & Gamble, Panamá', pt: 'Senior Data Scientist @ Procter & Gamble, Panamá' }, country: 'pa' },
+  { when: '2019-09', what: { en: 'Data Scientist @ Procter & Gamble', es: 'Data Scientist @ Procter & Gamble', pt: 'Data Scientist @ Procter & Gamble' }, country: 'pa' },
+  { when: '2018-08', what: { en: 'Postdoctoral Researcher @ Universidade Federal Fluminense, Rio de Janeiro', es: 'Investigador posdoctoral @ Universidade Federal Fluminense, Río de Janeiro', pt: 'Pesquisador de pós-doutorado @ Universidade Federal Fluminense, Rio de Janeiro' }, country: 'br' },
+  { when: '2014-02', what: { en: 'Scientific Researcher (AI Innovation) @ Dell EMC, Rio de Janeiro', es: 'Investigador científico (Innovación en IA) @ Dell EMC, Río de Janeiro', pt: 'Pesquisador científico (Inovação em IA) @ Dell EMC, Rio de Janeiro' }, country: 'br' },
+  { when: '2004-09', what: { en: 'Head of the Bioinformatics R&D Group @ UCI, Havana', es: 'Jefe del Grupo de I+D en Bioinformática @ UCI, La Habana', pt: 'Chefe do Grupo de P&D em Bioinformática @ UCI, Havana' }, country: 'cu' },
+  { when: '2003-09', what: { en: 'Project Manager, BioSyS @ UCI', es: 'Jefe de proyecto, BioSyS @ UCI', pt: 'Gerente de projeto, BioSyS @ UCI' }, country: 'cu' },
+  { when: '2002-09', what: { en: 'Assistant Professor @ UCI', es: 'Profesor asistente @ UCI', pt: 'Professor assistente @ UCI' }, country: 'cu' },
 ];
 
 export const education: LogItem[] = [
-  { when: '2013–2018', what: { en: 'PhD, Computational Modeling @ LNCC. Thesis: Generalized lambda distribution for uncertainty quantification of large-scale spatio-temporal models', es: 'Doctorado en Modelación Computacional @ LNCC. Tesis: Generalized lambda distribution for uncertainty quantification of large-scale spatio-temporal models', pt: 'Doutorado em Modelagem Computacional @ LNCC. Tese: Generalized lambda distribution for uncertainty quantification of large-scale spatio-temporal models' } },
-  { when: '2005–2007', what: { en: 'MSc, Bioinformatics @ InsTEC', es: 'Maestría en Bioinformática @ InsTEC', pt: 'Mestrado em Bioinformática @ InsTEC' } },
+  { when: '2013–2018', what: { en: 'PhD, Computational Modeling @ LNCC. Thesis: Generalized lambda distribution for uncertainty quantification of large-scale spatio-temporal models', es: 'Doctorado en Modelación Computacional @ LNCC. Tesis: Generalized lambda distribution for uncertainty quantification of large-scale spatio-temporal models', pt: 'Doutorado em Modelagem Computacional @ LNCC. Tese: Generalized lambda distribution for uncertainty quantification of large-scale spatio-temporal models' }, country: 'br' },
+  { when: '2005–2007', what: { en: 'MSc, Bioinformatics @ InsTEC', es: 'Maestría en Bioinformática @ InsTEC', pt: 'Mestrado em Bioinformática @ InsTEC' }, country: 'cu' },
+  // TODO: replace with real years (author to confirm) — left empty rather than guessed.
+  { when: '', what: { en: 'BSc, Radiochemistry @ ISCTN, Havana', es: 'Licenciatura en Radioquímica @ ISCTN, La Habana', pt: 'Graduação em Radioquímica @ ISCTN, Havana' }, country: 'cu' },
+];
+
+export interface SpokenLanguage {
+  flag: FlagCode;
+  name: Localized;
+  level: Localized;
+}
+
+export const spoken: SpokenLanguage[] = [
+  { flag: 'es', name: { en: 'Spanish', es: 'Español', pt: 'Espanhol' }, level: { en: 'native', es: 'nativo', pt: 'nativo' } },
+  { flag: 'us', name: { en: 'English', es: 'Inglés', pt: 'Inglês' }, level: { en: 'professional', es: 'profesional', pt: 'profissional' } },
+  { flag: 'br', name: { en: 'Portuguese', es: 'Portugués', pt: 'Português' }, level: { en: 'professional', es: 'profesional', pt: 'profissional' } },
 ];
 
 export const links = [

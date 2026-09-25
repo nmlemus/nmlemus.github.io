@@ -7,7 +7,8 @@ import { t } from '../../i18n/ui.ts';
 import type { Lang } from '../../i18n/langs.ts';
 import { getPosts } from '../../lib/posts.ts';
 import { person } from '../../lib/jsonld.ts';
-import { links } from '../../data/profile.ts';
+import Flag from '../../components/Flag.astro';
+import { links, spoken } from '../../data/profile.ts';
 
 export function getStaticPaths() {
   return langParams();
@@ -25,6 +26,9 @@ const highlights = t(lang, 'home.role').split(' | ');
       <p class="pane-title reader-hide" aria-hidden="true">─ whoami ─</p>
       <h1 class="name" id="whoami">Noel Moreno Lemus</h1>
       <p class="role">{highlights.map((h) => <span>{h}</span>)}</p>
+      <ul class="spoken" aria-label={t(lang, 'home.languages')}>
+        {spoken.map((s) => <li><Flag code={s.flag} lang={lang} decorative /><span class="lang-name">{s.name[lang]}</span> <span class="level">· {s.level[lang]}</span></li>)}
+      </ul>
       <p class="bio">{t(lang, 'home.bio')}</p>
       <p class="now"># {t(lang, 'home.now')}: <a href="https://github.com/nmlemus/dsagent">dsagent</a>, {t(lang, 'home.nowText')}</p>
       <ul class="links">
@@ -48,6 +52,11 @@ const highlights = t(lang, 'home.role').split(' | ');
   .name { font: 700 26px/1.25 var(--mono); color: var(--strong); }
   .role { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; color: var(--accent); font-size: 13.5px; }
   .role span::before { content: '▸ '; color: var(--muted); }
+  .spoken { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-direction: column; gap: 3px; font-size: 13.5px; }
+  .spoken li { display: flex; align-items: center; }
+  .lang-name { color: var(--strong); }
+  .level { color: var(--muted); margin-left: .5ch; }
+  :global(:root[data-mode='reader']) .spoken { font-family: var(--serif); font-size: 15px; }
   .bio { font: 400 16px/1.6 var(--serif); color: var(--prose); margin-top: 16px; }
   .now { color: var(--muted); margin-top: 14px; font-size: 13.5px; }
   .links { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 0; margin: 16px 0 0; }

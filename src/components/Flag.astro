@@ -1,0 +1,20 @@
+---
+import type { Lang } from '../i18n/langs.ts';
+import { FLAGS, type FlagCode } from '../lib/flags.ts';
+
+interface Props {
+  code: FlagCode;
+  lang: Lang;
+  /** true when the text next to it already names the country/language. */
+  decorative?: boolean;
+}
+const { code, lang, decorative = false } = Astro.props;
+const flag = FLAGS[code];
+---
+{decorative
+  ? <span class="flag" aria-hidden="true" set:html={flag.svg} />
+  : <span class="flag" role="img" aria-label={flag.name[lang]} title={flag.name[lang]} set:html={flag.svg} />}
+<style>
+  .flag { display: inline-block; width: 1.35em; height: .9em; vertical-align: -0.1em; margin-right: .45em; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px rgba(128, 128, 128, .35); line-height: 0; flex: none; }
+  .flag :global(svg) { width: 100%; height: 100%; display: block; }
+</style>
