@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Prompt from '../components/Prompt.astro';
+---
+<BaseLayout lang="en" path="" section="none" noindex title="404 — Noel Moreno Lemus" description="Page not found">
+  <Prompt dir="~" status="error">
+    <Fragment slot="cmd">cd <span class="arg">$REQUEST_URI</span></Fragment>
+    <p class="err">zsh: no such file or directory</p>
+    <h1 class="sr-only">404</h1>
+    <ul class="msgs">
+      <li lang="en">Page not found. <a href="/">cd ~</a></li>
+      <li lang="es">Página no encontrada. <a href="/es/">cd ~</a></li>
+      <li lang="pt-BR">Página não encontrada. <a href="/pt/">cd ~</a></li>
+    </ul>
+  </Prompt>
+</BaseLayout>
+<style>
+  .err { color: var(--err); }
+  .msgs { list-style: none; padding: 0; margin: 10px 0 0; }
+</style>

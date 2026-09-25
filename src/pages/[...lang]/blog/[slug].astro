@@ -1,0 +1,75 @@
+---
+import { render } from 'astro:content';
+import 'katex/dist/katex.min.css';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import Prompt from '../../../components/Prompt.astro';
+import Frontmatter from '../../../components/Frontmatter.astro';
+import { langParams, localePath } from '../../../i18n/paths.ts';
+import { HTML_LANG, type Lang } from '../../../i18n/langs.ts';
+import { t } from '../../../i18n/ui.ts';
+import { getPostGroups, type BlogEntry } from '../../../lib/posts.ts';
+import { longDate } from '../../../lib/format.ts';
+import { readingMinutes } from '../../../lib/reading-time.ts';
+import { blogPosting } from '../../../lib/jsonld.ts';
+
+export async function getStaticPaths() {
+  const groups = await getPostGroups();
+  return langParams().flatMap(({ params, props }) =>
+    groups.map((g) => ({ params: { ...params, slug: g.slug }, props: { lang: props.lang, slug: g.slug, entry: g.byLang[props.lang] } })),
+  );
+}
+const { lang, slug, entry } = Astro.props as { lang: Lang; slug: string; entry: BlogEntry };
+const { Content, headings } = await render(entry);
+const { title, description, date, updated, tags } = entry.data;
+const minutes = readingMinutes(entry.body ?? '');
+// 'footnote-label' is the visually hidden heading GFM adds before footnotes.
+const toc = headings.filter((h) => h.depth === 2 && h.slug !== 'footnote-label');
+const path = `blog/${slug}/`;
+const url = new URL(localePath(lang, path), Astro.site).href;
+const ogImage = `/og/${lang}/${slug}.png`;
+const share = {
+  linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+  x: `https://x.com/intent/post?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`,
+};
+---
+<BaseLayout lang={lang} path={path} section="writing" type="article" title={`${title} — Noel Moreno Lemus`} description={description} ogImage={ogImage}
+  jsonLd={blogPosting({ site: Astro.site!, url, title, description, date, updated, lang: HTML_LANG[lang], image: new URL(ogImage, Astro.site).href })}>
+  <Prompt dir="~/writing">
+    <Fragment slot="cmd">cat <span class="arg">{slug}.md</span></Fragment>
+    <Frontmatter lang={lang} slug={slug} title={title} date={date} minutes={minutes} tags={tags} />
+    <article class="md">
+      <h1><span class="hash" aria-hidden="true"># </span>{title}</h1>
+      <p class="lede">{description}</p>
+      <p class="byline">Noel Moreno Lemus · <time datetime={date.toISOString()}>{longDate(date, lang)}</time> · {minutes} {t(lang, 'post.readTime')}</p>
+      {toc.length >= 3 && (
+        <nav class="toc reader-hide" aria-label={t(lang, 'post.toc')}>
+          <span class="cmdline" aria-hidden="true">$ grep '^## ' {slug}.md</span>
+          {toc.map((h) => <a href={`#${h.slug}`}>## {h.text}</a>)}
+        </nav>
+      )}
+      <Content />
+    </article>
+  </Prompt>
+  <Prompt dir="~/writing">
+    <Fragment slot="cmd">share <a href={share.linkedin} rel="noopener" target="_blank">--linkedin</a> <a href={share.x} rel="noopener" target="_blank">--x</a> <button type="button" class="copy" data-copy={url}>--copy-link</button></Fragment>
+  </Prompt>
+</BaseLayout>
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(button.dataset.copy ?? location.href);
+        button.textContent = '✔ copied';
+      } catch {
+        button.textContent = button.dataset.copy ?? '';
+      }
+    });
+  });
+</script>
+<style>
+  .toc { display: flex; flex-direction: column; margin: 0 0 22px; font-size: 13.5px; }
+  .toc a { padding: 3px 0; min-height: 24px; }
+  .cmdline { color: var(--muted); }
+  .copy { font: inherit; background: none; border: 0; padding: 0; color: var(--link); cursor: pointer; }
+  :global(:root[data-mode='reader']) .copy { font-family: var(--serif); }
+</style>

@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import Prompt from '../../../components/Prompt.astro';
+import PostList from '../../../components/PostList.astro';
+import { langParams, localePath } from '../../../i18n/paths.ts';
+import { t } from '../../../i18n/ui.ts';
+import type { Lang } from '../../../i18n/langs.ts';
+import { getPosts } from '../../../lib/posts.ts';
+
+export function getStaticPaths() {
+  return langParams();
+}
+const { lang } = Astro.props as { lang: Lang };
+const posts = await getPosts(lang);
+---
+<BaseLayout lang={lang} path="blog/" section="writing" title={`${t(lang, 'meta.blogTitle')} — Noel Moreno Lemus`} description={t(lang, 'meta.homeDescription')}>
+  <h1 class="sr-only">{t(lang, 'meta.blogTitle')}</h1>
+  <Prompt dir="~">
+    <Fragment slot="cmd">ls -t <span class="arg">writing/</span></Fragment>
+    <PostList lang={lang} posts={posts} />
+    <p class="total">{t(lang, 'list.entries')}: {posts.length} · <a href={localePath(lang, 'rss.xml')}>rss.xml</a></p>
+  </Prompt>
+</BaseLayout>

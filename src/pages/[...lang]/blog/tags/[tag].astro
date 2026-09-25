@@ -1,0 +1,25 @@
+---
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import Prompt from '../../../../components/Prompt.astro';
+import PostList from '../../../../components/PostList.astro';
+import { langParams } from '../../../../i18n/paths.ts';
+import { t } from '../../../../i18n/ui.ts';
+import type { Lang } from '../../../../i18n/langs.ts';
+import { getPosts, getTags } from '../../../../lib/posts.ts';
+
+export async function getStaticPaths() {
+  const tags = await getTags();
+  return langParams().flatMap(({ params, props }) =>
+    tags.map((tag) => ({ params: { ...params, tag }, props: { ...props, tag } })),
+  );
+}
+const { lang, tag } = Astro.props as { lang: Lang; tag: string };
+const posts = (await getPosts(lang)).filter((p) => p.entry.data.tags.includes(tag));
+---
+<BaseLayout lang={lang} path={`blog/tags/${tag}/`} section="writing" title={`${t(lang, 'meta.tagTitle')} #${tag} — Noel Moreno Lemus`} description={`${t(lang, 'meta.tagTitle')} #${tag}`}>
+  <h1 class="sr-only">{t(lang, 'meta.tagTitle')} #{tag}</h1>
+  <Prompt dir="~">
+    <Fragment slot="cmd">ls <span class="arg">writing/</span> | grep <span class="arg">#{tag}</span></Fragment>
+    <PostList lang={lang} posts={posts} />
+  </Prompt>
+</BaseLayout>

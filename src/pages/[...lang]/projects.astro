@@ -1,0 +1,40 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Prompt from '../../components/Prompt.astro';
+import { langParams } from '../../i18n/paths.ts';
+import { t } from '../../i18n/ui.ts';
+import type { Lang } from '../../i18n/langs.ts';
+import { projects } from '../../data/projects.ts';
+
+export function getStaticPaths() {
+  return langParams();
+}
+const { lang } = Astro.props as { lang: Lang };
+---
+<BaseLayout lang={lang} path="projects/" section="projects" title={`${t(lang, 'meta.projectsTitle')} — Noel Moreno Lemus`} description={t(lang, 'meta.projectsDescription')}>
+  <h1 class="sr-only">{t(lang, 'meta.projectsTitle')}</h1>
+  <Prompt dir="~">
+    <Fragment slot="cmd">ls -l <span class="arg">projects/</span></Fragment>
+    <ul class="projects">
+      {projects.map((p) => (
+        <li>
+          <span class="period">{p.period}</span>
+          <h2 class="name">{p.url ? <a href={p.url}>{p.name}/</a> : `${p.name}/`}</h2>
+          <span class="kind">{p.kind[lang]}</span>
+          <p class="desc">{p.description[lang]}</p>
+        </li>
+      ))}
+    </ul>
+  </Prompt>
+</BaseLayout>
+<style>
+  .projects { list-style: none; margin: 0; padding: 0; }
+  .projects li { display: grid; grid-template-columns: 11ch minmax(0, 1fr); column-gap: 2ch; padding: 12px 0; border-bottom: 1px dashed var(--line); }
+  .period { color: var(--muted); }
+  .name { font: 700 14.5px/1.5 var(--mono); color: var(--link); }
+  .kind, .desc { grid-column: 2; }
+  .kind { color: var(--quote); font-size: 13px; }
+  .desc { font: 400 15.5px/1.55 var(--serif); color: var(--prose); margin-top: 4px; }
+  @media (max-width: 600px) { .projects li { grid-template-columns: 1fr; } .kind, .desc { grid-column: 1; } }
+  :global(:root[data-mode='reader']) .name { font: 600 20px/1.3 var(--serif); }
+</style>
