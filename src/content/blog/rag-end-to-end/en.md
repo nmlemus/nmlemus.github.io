@@ -5,7 +5,7 @@ date: 2026-09-25
 tags: [rag, retrieval, evaluation]
 ---
 
-Plugging in a vector store is the easy part of RAG. Whether it works depends on reading the documents properly, searching in a hybrid way, reranking, and measuring retrieval and answers separately.
+> **Key idea:** The value of RAG is not in "plugging in a vector store": it is in **reading documents properly**, **searching in a hybrid way**, **reranking** and, above all, **measuring** retrieval and answers separately.
 
 In Anthropic's tests (2024), adding context to chunks, BM25 and a reranker cut retrieval failures by 67%. Commercial legal RAG tools hallucinate 17–33% of the time (Stanford, 2024), and on Meta's CRAG benchmark (2024) the best industrial RAG systems answer without hallucinating only 63% of the time. For measuring all this, an LLM judge agrees with humans more than 80% of the time (Zheng et al., 2023).
 
@@ -19,6 +19,8 @@ I checked almost everything here against the official documentation and the cite
 
 Why do you need it? A language model does not know your company's internal documents, its knowledge stops at a cutoff date, and it can make things up ("hallucinate"). With RAG the answer rests on specific documents that anyone can check, and updating the knowledge does not require retraining the model.
 
+
+The easiest way to see how the pieces fit together is a library, and someone who walks up to the desk with a question:
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:965px" viewBox="0 0 1440 320"  xmlns="http://www.w3.org/2000/svg" role="img"
          aria-labelledby="rag-library-title rag-library-desc">
@@ -113,16 +115,30 @@ Why do you need it? A language model does not know your company's internal docum
       <text x="752" y="301" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Data hand-off between stages</text>
     </svg></div><figcaption>RAG as a library: documents → chunks → index → search → reranker → model → evaluation</figcaption></figure>
 
+1. The **library** is your documents: everything the system is allowed to answer from, such as PDFs, wikis or internal policies.
+2. The **index cards** are the chunks. Nobody rereads a whole book for every question, so each document is cut into small cards, each holding a piece of information that makes sense on its own.
+3. The **catalog** is the index. Every card is filed two ways: by the words it contains and by what it means. That is what later lets you search both by keyword and by meaning.
+4. The **librarian** is the search. When a question arrives, the librarian quickly pulls about 50 cards that look relevant, without reading them closely.
+5. The **expert** is the reranker. The expert reads the question next to each of those cards and keeps the best 5.
+6. The **writer** is the language model. Only now does anyone write the answer, using those 5 cards and citing the card behind each sentence. If the cards do not contain the answer, the honest reply is "I don't know".
+7. The **teacher** is the evaluation. The teacher grades two things separately: did the librarian bring the right cards, and is the answer faithful to them?
 
-Gao et al. (2023/24) describe the field's evolution in three stages:
+The rest of the tutorial follows the same order: preparing the documents (stages 1 to 3), search (4), reranking (5), generation (6) and evaluation (7).
 
-| Stage | Idea |
+
+Not every RAG system has all seven stages. Gao et al. (2023/24) describe three generations:
+
+| Generation | Idea |
 |----|----|
 | Naive RAG | Index → retrieve the top k → paste them into the prompt |
 | Advanced RAG | Improve things before searching (rewrite the question, chunk better) and after (rerank, compress) |
 | Modular RAG | Interchangeable pieces; adaptive, iterative and agentic flows |
 
+In library terms, naive RAG is a librarian who hands the first k cards straight to the writer, with no expert in between. This tutorial describes an advanced RAG, with modular pieces where they pay off (section 10).
+
 ### 2. The three circuits of a production RAG system
+
+A RAG system in production runs three circuits. The first prepares the documents once, offline: sources, parsing and chunking, embeddings and the index (stages 1 to 3 of the library). The second runs for every question: hybrid search, the reranker and the model that answers with citations (stages 4 to 6). The third evaluates, before deployment with a golden dataset and in production by sampling real traffic, and feeds improvements back to the other two (stage 7). Parts II to VI cover them in that order.
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 528" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rag-circuitos-title rag-circuitos-desc">

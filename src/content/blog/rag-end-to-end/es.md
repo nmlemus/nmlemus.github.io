@@ -5,7 +5,7 @@ date: 2026-09-25
 tags: [rag, retrieval, evaluation]
 ---
 
-Conectar una base de datos vectorial es la parte fácil de RAG. Que funcione depende de leer bien los documentos, buscar de forma híbrida, aplicar un reranker y medir por separado la recuperación y las respuestas.
+> **Idea clave:** el valor de RAG no está en "enchufar un vector store": está en **leer bien los documentos**, **buscar de forma híbrida**, **reordenar (reranking)** y, sobre todo, **medir** el retrieval y las respuestas por separado.
 
 En las pruebas de Anthropic (2024), agregar contexto a los chunks, BM25 y un reranker redujo en 67% las fallas de recuperación. Las herramientas comerciales de RAG legal alucinan el 17–33% de las veces (Stanford, 2024), y en el benchmark CRAG de Meta (2024) los mejores sistemas RAG industriales responden sin alucinar solo el 63% de las veces. Para medir todo esto, un juez LLM coincide con los humanos más del 80% de las veces (Zheng et al., 2023).
 
@@ -19,6 +19,8 @@ Verifiqué casi todo lo que aparece aquí contra la documentación oficial y los
 
 ¿Para qué lo necesitas? Un modelo de lenguaje no conoce los documentos internos de tu empresa, su conocimiento se detiene en una fecha de corte y puede inventar cosas ("alucinar"). Con RAG la respuesta se apoya en documentos concretos que cualquiera puede revisar, y actualizar el conocimiento no obliga a reentrenar el modelo.
 
+
+La forma más fácil de ver cómo encajan las piezas es pensar en una biblioteca y en alguien que llega al mostrador con una pregunta:
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:965px" viewBox="0 0 1440 320"  xmlns="http://www.w3.org/2000/svg" role="img"
          aria-labelledby="rag-library-title rag-library-desc">
@@ -113,16 +115,30 @@ Verifiqué casi todo lo que aparece aquí contra la documentación oficial y los
       <text x="752" y="301" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Paso de datos entre etapas</text>
     </svg></div><figcaption>RAG como una biblioteca: documentos → chunks → índice → búsqueda → reranker → modelo → evaluación</figcaption></figure>
 
+1. La **biblioteca** son tus documentos: todo aquello de lo que el sistema puede sacar respuestas, como PDFs, wikis o políticas internas.
+2. Las **fichas** son los chunks. Nadie relee un libro entero por cada pregunta, así que cada documento se corta en fichas pequeñas, cada una con un trozo de información que se entiende por sí solo.
+3. El **catálogo** es el índice. Cada ficha se archiva de dos maneras: por las palabras que contiene y por lo que significa. Eso es lo que después permite buscar tanto por palabra clave como por significado.
+4. El **bibliotecario** es la búsqueda. Cuando llega una pregunta, trae rápido unas 50 fichas que parecen relevantes, sin leerlas a fondo.
+5. El **experto** es el reranker. Lee la pregunta junto a cada una de esas fichas y se queda con las 5 mejores.
+6. El **redactor** es el modelo de lenguaje. Solo ahora alguien escribe la respuesta, usando esas 5 fichas y citando la ficha de la que sale cada frase. Si las fichas no contienen la respuesta, lo honesto es decir "no lo sé".
+7. El **profesor** es la evaluación. Califica dos cosas por separado: si el bibliotecario trajo las fichas correctas y si la respuesta es fiel a ellas.
 
-Gao et al. (2023/24) describen la evolución del campo en tres etapas:
+El resto del tutorial sigue el mismo orden: preparar los documentos (etapas 1 a 3), búsqueda (4), reranking (5), generación (6) y evaluación (7).
 
-| Etapa | Idea |
+
+No todos los sistemas RAG tienen las siete etapas. Gao et al. (2023/24) distinguen tres generaciones:
+
+| Generación | Idea |
 |----|----|
 | Naive RAG | Indexar → recuperar los k primeros → pegarlos en el prompt |
 | Advanced RAG | Mejorar lo que pasa antes de buscar (reescribir la pregunta, hacer mejor chunking) y después (rerank, compresión) |
 | Modular RAG | Piezas intercambiables; flujos adaptativos, iterativos y agénticos |
 
+En términos de la biblioteca, el Naive RAG es un bibliotecario que le pasa las primeras k fichas directamente al redactor, sin el experto de por medio. Este tutorial describe un Advanced RAG, con piezas modulares donde compensan (sección 10).
+
 ### 2. Los tres circuitos de un sistema RAG en producción
+
+Un sistema RAG en producción funciona con tres circuitos. El primero prepara los documentos una sola vez, fuera de línea: fuentes, parsing y chunking, embeddings e índice (etapas 1 a 3 de la biblioteca). El segundo se ejecuta con cada pregunta: búsqueda híbrida, reranker y el modelo que responde con citas (etapas 4 a 6). El tercero evalúa, antes del despliegue con un golden dataset y en producción con muestras del tráfico real, y devuelve mejoras a los otros dos (etapa 7). Las partes II a VI los recorren en ese orden.
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 528" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rag-circuitos-title rag-circuitos-desc">
