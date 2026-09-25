@@ -1,43 +1,29 @@
 ---
 title: "RAG de ponta a ponta: um tutorial prático"
-description: "O que é, como funciona cada peça, como é avaliado, um exemplo em produção no Azure e uma comparação entre Azure · Google Cloud · open source"
+description: "O que é, como funciona cada peça, como se avalia, um exemplo em produção no Azure e uma comparação entre Azure · Google Cloud · open source"
 date: 2026-09-25
 tags: [rag, retrieval, evaluation]
 ---
 
-<!-- Source: docs/superpowers/rag-tutorial-end-to-end.en.html (compiled 2026-09-23). -->
+Conectar um banco vetorial é a parte fácil do RAG. Se ele funciona ou não depende de ler bem os documentos, fazer busca híbrida, aplicar reranking e medir a recuperação e as respostas separadamente.
 
-> **Ideia-chave:** O valor do RAG não está em "plugar um vector store": está em **ler bem os documentos**, **buscar de forma híbrida**, **fazer reranking** e, acima de tudo, **medir** a recuperação e as respostas separadamente.
+Nos testes da Anthropic (2024), adicionar contexto aos chunks, BM25 e um reranker reduziu as falhas de recuperação em 67%. Ferramentas comerciais de RAG jurídico alucinam em 17–33% dos casos (Stanford, 2024), e no benchmark CRAG da Meta (2024) os melhores sistemas de RAG industriais só respondem sem alucinar em 63% das vezes. Para medir tudo isso, um juiz LLM concorda com humanos em mais de 80% das vezes (Zheng et al., 2023).
 
-| Número-chave | Valor | Fonte |
-|---|---|---|
-| Menos falhas de recuperação | −67% | Contexto + BM25 + reranker (Anthropic, 2024) |
-| Alucinação em RAG jurídico comercial | 17–33% | Stanford, 2024 |
-| Respostas sem alucinação (melhor RAG industrial) | 63% | Benchmark CRAG, Meta 2024 |
-| Concordância juiz LLM ↔ humano | \>80% | Zheng et al., 2023 |
-
-## Como ler este documento
-
-> Compilado em: 2026-09-23.
-
-- **(preview)**: o recurso existe, mas o fornecedor ainda o mantém em *preview*. Você pode testá-lo, mas o fornecedor não o recomenda para produção.
-- **†**: dado de conhecimento geral, **não verificado** na documentação oficial em 2026-09-23. Todo o resto foi conferido nesse dia na documentação oficial ou nos papers citados.
-- As siglas são explicadas na primeira vez em que aparecem, e todas estão no **Glossário** ao final.
-- **Referências**: os trabalhos são citados no corpo pelo nome (ex.: *SPLADE*, *ColBERT*, *RAGAS*); a lista completa de autores, o ano e o link estão nas **Referências** ao final.
+Conferi quase tudo o que está aqui na documentação oficial e nos artigos citados em 23 de setembro de 2026. Alguns detalhes de ferramentas marcados com † vêm da experiência geral e não voltei a verificá-los. Recursos marcados com (preview) existem, mas o fornecedor ainda não os recomenda para produção. As siglas são explicadas na primeira vez em que aparecem e ficam reunidas no glossário no final; os artigos são citados pelo nome no texto (*SPLADE*, *ColBERT*, *RAGAS*), com autores, ano e link nas referências.
 
 ## Parte I · Conceitos
 
 ### 1. O que é RAG, explicado com uma biblioteca
 
-**RAG** (*Retrieval-Augmented Generation*) significa que, antes de responder, um modelo de linguagem busca informações nos seus documentos e responde com base no que encontrou, citando a fonte.
+**RAG** (*Retrieval-Augmented Generation*) significa que, antes de responder, um modelo de linguagem busca nos seus documentos e responde a partir do que encontrou, citando a fonte.
 
-Por que isso é necessário? O modelo de linguagem não conhece os documentos internos da sua empresa, seu conhecimento tem uma data de corte e ele pode inventar coisas (o que se chama de "alucinar"). Com RAG, a resposta se apoia em documentos específicos e verificáveis, e atualizar o conhecimento não exige retreinar o modelo.
+Por que você precisa disso? Um modelo de linguagem não conhece os documentos internos da sua empresa, o conhecimento dele para numa data de corte e ele pode inventar coisas ("alucinar"). Com RAG, a resposta se apoia em documentos específicos que qualquer pessoa pode conferir, e atualizar o conhecimento não exige retreinar o modelo.
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:965px" viewBox="0 0 1440 320"  xmlns="http://www.w3.org/2000/svg" role="img"
          aria-labelledby="rag-library-title rag-library-desc">
       <title id="rag-library-title">RAG explicado como uma biblioteca</title>
-      <desc id="rag-library-desc">Um pipeline da esquerda para a direita com sete etapas — documentos, chunks, índice, busca, reranker, modelo e avaliação — mapeadas para a metáfora de uma biblioteca: um acervo de documentos é cortado em fichas, catalogado, pesquisado por um arquivista, filtrado por um perito (o reranker), redigido por um modelo e corrigido por uma mestra, com a etapa de geração destacada como a passagem focal.</desc>
+      <desc id="rag-library-desc">Um pipeline da esquerda para a direita com sete etapas (documentos, chunks, índice, busca, reranker, modelo e avaliação) mapeadas para a metáfora de uma biblioteca: o acervo de documentos é cortado em fichas, catalogado, pesquisado por um bibliotecário, filtrado por um especialista (o reranker), redigido por um modelo e corrigido por um professor, com a etapa de geração em destaque.</desc>
       <defs>
         <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
           <polygon points="0 0, 8 3, 0 6" fill="#003da5"/></marker>
@@ -50,7 +36,7 @@ Por que isso é necessário? O modelo de linguagem não conhece os documentos in
       <line x1="400"  y1="184" x2="440"  y2="184" stroke="#003da5" stroke-width="1" marker-end="url(#arrow)"/>
       <line x1="600"  y1="184" x2="640"  y2="184" stroke="#003da5" stroke-width="1" marker-end="url(#arrow)"/>
       <line x1="800"  y1="184" x2="840"  y2="184" stroke="#003da5" stroke-width="1" marker-end="url(#arrow)"/>
-      <!-- focal handoff: reranker -> model (accent) -->
+      <!-- highlighted handoff: reranker -> model (accent) -->
       <line x1="1000" y1="184" x2="1040" y2="184" stroke="#fedb00" stroke-width="1.2" marker-end="url(#arrow-accent)"/>
       <line x1="1200" y1="184" x2="1240" y2="184" stroke="#003da5" stroke-width="1" marker-end="url(#arrow)"/>
       <!-- ============ STAGE 1 · Library (documents) ============ -->
@@ -58,8 +44,7 @@ Por que isso é necessário? O modelo de linguagem não conhece os documentos in
       <text x="30" y="107" font-family="Meslo, Menlo, monospace" font-size="9" fill="#000000" text-anchor="middle">1</text>
       <rect x="40" y="120" width="160" height="128" rx="6" fill="#ffffff"/>
       <rect x="40" y="120" width="160" height="128" rx="6" fill="#ffffff" stroke="#000000" stroke-width="1"/>
-      <text x="120" y="156" font-size="26" text-anchor="middle">📚</text>
-      <text x="120" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Acervo</text>
+      <text x="120" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Biblioteca</text>
       <text x="120" y="200" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">documentos</text>
       <text x="120" y="216" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">Seus arquivos-fonte</text>
       <text x="120" y="228" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">(PDFs, wikis, políticas)</text>
@@ -68,17 +53,15 @@ Por que isso é necessário? O modelo de linguagem não conhece os documentos in
       <text x="240" y="107" font-family="Meslo, Menlo, monospace" font-size="9" fill="#000000" text-anchor="middle">2</text>
       <rect x="240" y="120" width="160" height="128" rx="6" fill="#ffffff"/>
       <rect x="240" y="120" width="160" height="128" rx="6" fill="#ffffff" stroke="#000000" stroke-width="1"/>
-      <text x="320" y="156" font-size="26" text-anchor="middle">✂️</text>
       <text x="320" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Fichas</text>
       <text x="320" y="200" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">chunks</text>
       <text x="320" y="216" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">Corte os documentos</text>
-      <text x="320" y="228" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">em pedaços menores</text>
+      <text x="320" y="228" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">em pedaços pequenos</text>
       <!-- ============ STAGE 3 · Catalog (index) ============ -->
       <rect x="430" y="96" width="20" height="16" rx="8" fill="rgba(0,0,0,0.12)"/>
       <text x="440" y="107" font-family="Meslo, Menlo, monospace" font-size="9" fill="#000000" text-anchor="middle">3</text>
       <rect x="440" y="120" width="160" height="128" rx="6" fill="#ffffff"/>
       <rect x="440" y="120" width="160" height="128" rx="6" fill="#ffffff" stroke="#000000" stroke-width="1"/>
-      <text x="520" y="156" font-size="26" text-anchor="middle">🗂️</text>
       <text x="520" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Catálogo</text>
       <text x="520" y="200" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">índice</text>
       <text x="520" y="216" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">Arquive cada ficha</text>
@@ -88,8 +71,7 @@ Por que isso é necessário? O modelo de linguagem não conhece os documentos in
       <text x="640" y="107" font-family="Meslo, Menlo, monospace" font-size="9" fill="#000000" text-anchor="middle">4</text>
       <rect x="640" y="120" width="160" height="128" rx="6" fill="#ffffff"/>
       <rect x="640" y="120" width="160" height="128" rx="6" fill="#ffffff" stroke="#000000" stroke-width="1"/>
-      <text x="720" y="156" font-size="26" text-anchor="middle">🔎</text>
-      <text x="720" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Arquivista</text>
+      <text x="720" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Bibliotecário</text>
       <text x="720" y="200" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">busca</text>
       <text x="720" y="216" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">Traz ~50</text>
       <text x="720" y="228" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">fichas candidatas</text>
@@ -98,17 +80,15 @@ Por que isso é necessário? O modelo de linguagem não conhece os documentos in
       <text x="840" y="107" font-family="Meslo, Menlo, monospace" font-size="9" fill="#000000" text-anchor="middle">5</text>
       <rect x="840" y="120" width="160" height="128" rx="6" fill="#ffffff"/>
       <rect x="840" y="120" width="160" height="128" rx="6" fill="#ffffff" stroke="#000000" stroke-width="1"/>
-      <text x="920" y="156" font-size="26" text-anchor="middle">🧐</text>
-      <text x="920" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Perito</text>
+      <text x="920" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Especialista</text>
       <text x="920" y="200" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">reranker</text>
-      <text x="920" y="216" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">Fica com o</text>
-      <text x="920" y="228" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">top 5</text>
-      <!-- ============ STAGE 6 · Writer (model) · FOCAL ============ -->
+      <text x="920" y="216" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">Fica com as</text>
+      <text x="920" y="228" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">5 melhores</text>
+      <!-- ============ STAGE 6 · Writer (model) · HIGHLIGHT ============ -->
       <rect x="1030" y="96" width="20" height="16" rx="8" fill="rgba(254,219,0,0.20)"/>
       <text x="1040" y="107" font-family="Meslo, Menlo, monospace" font-size="9" fill="#000000" text-anchor="middle">6</text>
       <rect x="1040" y="120" width="160" height="128" rx="6" fill="#ffffff"/>
       <rect x="1040" y="120" width="160" height="128" rx="6" fill="rgba(254,219,0,0.14)" stroke="#fedb00" stroke-width="1.2"/>
-      <text x="1120" y="156" font-size="26" text-anchor="middle">✍️</text>
       <text x="1120" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Redator</text>
       <text x="1120" y="200" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">modelo</text>
       <text x="1120" y="216" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">Escreve a resposta</text>
@@ -118,8 +98,7 @@ Por que isso é necessário? O modelo de linguagem não conhece os documentos in
       <text x="1240" y="107" font-family="Meslo, Menlo, monospace" font-size="9" fill="#000000" text-anchor="middle">7</text>
       <rect x="1240" y="120" width="160" height="128" rx="6" fill="#ffffff"/>
       <rect x="1240" y="120" width="160" height="128" rx="6" fill="#ffffff" stroke="#000000" stroke-width="1"/>
-      <text x="1320" y="156" font-size="26" text-anchor="middle">👩‍🏫</text>
-      <text x="1320" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Mestra</text>
+      <text x="1320" y="182" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Professor</text>
       <text x="1320" y="200" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">avaliação</text>
       <text x="1320" y="216" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">Nota: recuperou</text>
       <text x="1320" y="228" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8" text-anchor="middle">bem? respondeu bem?</text>
@@ -129,26 +108,26 @@ Por que isso é necessário? O modelo de linguagem não conhece os documentos in
       <rect x="132" y="292" width="12" height="12" rx="2" fill="#ffffff" stroke="#000000" stroke-width="1"/>
       <text x="152" y="301" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Etapas de recuperação (ingestão → busca → rerank)</text>
       <rect x="470" y="292" width="12" height="12" rx="2" fill="rgba(254,219,0,0.14)" stroke="#fedb00" stroke-width="1.2"/>
-      <text x="490" y="301" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Geração — passagem focal</text>
+      <text x="490" y="301" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Geração (etapa principal)</text>
       <line x1="720" y1="298" x2="744" y2="298" stroke="#003da5" stroke-width="1" marker-end="url(#arrow)"/>
       <text x="752" y="301" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Passagem de dados entre etapas</text>
     </svg></div><figcaption>RAG como uma biblioteca: documentos → chunks → índice → busca → reranker → modelo → avaliação</figcaption></figure>
 
 
-A evolução da área costuma ser descrita em três estágios (Gao et al., 2023/24):
+Gao et al. (2023/24) descrevem a evolução da área em três estágios:
 
 | Estágio | Ideia |
 |----|----|
-| **Naive RAG** | Indexar → recuperar os top k → colá-los no prompt |
-| **Advanced RAG** | Melhorar **antes** de buscar (reescrever a pergunta, fazer um chunking melhor) e **depois** (rerank, compressão) |
-| **Modular RAG** | Peças intercambiáveis; fluxos adaptativos, iterativos e agênticos |
+| Naive RAG | Indexar → recuperar os top k → colar no prompt |
+| Advanced RAG | Melhorar as coisas antes da busca (reescrever a pergunta, fazer um chunking melhor) e depois dela (reranking, compressão) |
+| Modular RAG | Peças intercambiáveis; fluxos adaptativos, iterativos e agênticos |
 
 ### 2. Os três circuitos de um sistema RAG em produção
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 528" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rag-circuitos-title rag-circuitos-desc">
 <title id="rag-circuitos-title">Os três circuitos de um RAG em produção</title>
-<desc id="rag-circuitos-desc">Arquitetura de um RAG com três circuitos: preparar os documentos (fontes, parsing e chunking, embeddings, índice), responder a cada pergunta (busca híbrida, reranker, modelo com citações) e avaliar com um golden set e amostragem para retroalimentar melhorias.</desc>
+<desc id="rag-circuitos-desc">Arquitetura de um RAG com três circuitos: preparar os documentos (fontes, parsing e chunking, embeddings, índice), responder a cada pergunta (busca híbrida, reranker, modelo com citações) e avaliar com um golden set e amostragem para realimentar melhorias.</desc>
 <defs>
 <marker id="rag-circuitos-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
 <marker id="rag-circuitos-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
@@ -172,7 +151,7 @@ A evolução da área costuma ser descrita em três estágios (Gao et al., 2023/
 <path d="M 672,252 H 708" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#rag-circuitos-arrow)"/>
 <path d="M 796,128 V 160 Q 796,168 788,168 H 380 Q 372,168 372,176 V 224" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#rag-circuitos-arrow)"/>
 <rect x="552" y="148" width="64" height="12" rx="2" fill="#ffffff"/>
-<text x="584" y="157" fill="#7a8399" font-size="8" font-family="Meslo, Menlo, monospace" text-anchor="middle" letter-spacing="0.06em">BUSCA</text>
+<text x="584" y="157" fill="#7a8399" font-size="8" font-family="Meslo, Menlo, monospace" text-anchor="middle" letter-spacing="0.06em">CONSULTA</text>
 <path d="M 796,280 V 376" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#rag-circuitos-arrow)"/>
 <rect x="804" y="320" width="56" height="12" rx="2" fill="#ffffff"/>
 <text x="832" y="329" fill="#7a8399" font-size="8" font-family="Meslo, Menlo, monospace" text-anchor="middle" letter-spacing="0.06em">TRACES</text>
@@ -219,7 +198,7 @@ A evolução da área costuma ser descrita em três estágios (Gao et al., 2023/
 <text x="40" y="500" fill="#4f5d75" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.14em">LEGENDA</text>
 <rect x="112" y="492" width="20" height="12" rx="2" fill="#ffffff"/>
 <rect x="112" y="492" width="20" height="12" rx="2" fill="rgba(235,108,54,0.14)" stroke="#eb6c36" stroke-width="1"/>
-<text x="144" y="500" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">FOCAL</text>
+<text x="144" y="500" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">DESTAQUE</text>
 <rect x="200" y="492" width="20" height="12" rx="2" fill="#ffffff"/>
 <rect x="200" y="492" width="20" height="12" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
 <text x="232" y="500" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">PROCESSO</text>
@@ -240,12 +219,12 @@ A evolução da área costuma ser descrita em três estágios (Gao et al., 2023/
 
 ### 3. Ler bem o documento (parsing)
 
-Este é o passo de maior impacto e o mais negligenciado. Se o PDF for convertido em "texto puro", os títulos se perdem, as tabelas ficam embaralhadas e cada chunk perde seu contexto.
+O parsing tem mais impacto do que qualquer outra etapa, e é a que as equipes mais deixam de lado. Converta um PDF em "texto puro" e você perde os títulos, as tabelas ficam embaralhadas e cada chunk perde o seu contexto.
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:670px" viewBox="0 0 1000 340"  xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rag-parsing-title rag-parsing-desc">
-  <title id="rag-parsing-title">Parsing: texto puro versus parsing consciente da estrutura</title>
-  <desc id="rag-parsing-desc">Uma comparação de antes e depois do parsing de documentos. À esquerda, a extração de texto puro achata um PDF e perde seus títulos e a estrutura da tabela. Uma seta rotulada modelo de layout aponta para o painel da direita, onde o parsing consciente da estrutura mantém a hierarquia de títulos como Markdown e preserva a tabela.</desc>
+  <title id="rag-parsing-title">Parsing: texto puro versus parsing com estrutura</title>
+  <desc id="rag-parsing-desc">Uma comparação de antes e depois do parsing de documentos. À esquerda, a extração de texto puro achata um PDF e perde os títulos e a estrutura da tabela. Uma seta com o rótulo modelo de layout aponta para o painel da direita, onde o parsing que respeita a estrutura mantém a hierarquia de títulos em Markdown e preserva a tabela.</desc>
   <defs>
     <marker id="rp-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><polygon points="0 0, 9 3.5, 0 7" fill="#003da5"/></marker>
   </defs>
@@ -257,7 +236,7 @@ Este é o passo de maior impacto e o mais negligenciado. Se o PDF for convertido
   <!-- LEFT: plain-text extraction (structure lost) -->
   <rect x="40" y="72" width="380" height="216" rx="6" fill="#ffffff"/>
   <rect x="40" y="72" width="380" height="216" rx="6" fill="rgba(0,0,0,0.03)" stroke="rgba(0,0,0,0.30)" stroke-width="1"/>
-  <text x="60" y="100" font-family="Meslo, Menlo, monospace" font-size="8" fill="#003da5" letter-spacing="0.14em">❌ EXTRAÇÃO DE TEXTO PURO</text>
+  <text x="60" y="100" font-family="Meslo, Menlo, monospace" font-size="8" fill="#003da5" letter-spacing="0.14em">EXTRAÇÃO DE TEXTO PURO</text>
   <text x="60" y="120" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#000000">PDF original, achatado</text>
   <text x="60" y="150" font-family="Meslo, Menlo, monospace" font-size="10" fill="#4d6fa8">POLÍTICA DE TELETRABALHO 3.</text>
   <text x="60" y="166" font-family="Meslo, Menlo, monospace" font-size="10" fill="#4d6fa8">Elegibilidade Cargo Dias País</text>
@@ -265,52 +244,52 @@ Este é o passo de maior impacto e o mais negligenciado. Se o PDF for convertido
   <text x="60" y="222" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5">• títulos perdidos</text>
   <text x="60" y="240" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5">• tabela vira uma linha só</text>
   <text x="60" y="258" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5">• cada chunk perde o contexto</text>
-  <!-- RIGHT: structure-aware parsing (focal, accent) -->
+  <!-- RIGHT: structure-aware parsing (highlighted, accent) -->
   <rect x="580" y="72" width="380" height="216" rx="6" fill="#ffffff"/>
   <rect x="580" y="72" width="380" height="216" rx="6" fill="rgba(254,219,0,0.14)" stroke="#fedb00" stroke-width="1.4"/>
-  <text x="600" y="100" font-family="Meslo, Menlo, monospace" font-size="8" fill="#003da5" letter-spacing="0.12em">✅ CIENTE DA ESTRUTURA → MARKDOWN</text>
+  <text x="600" y="100" font-family="Meslo, Menlo, monospace" font-size="8" fill="#003da5" letter-spacing="0.12em">COM ESTRUTURA → MARKDOWN</text>
   <text x="600" y="120" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#000000">Títulos e tabela preservados</text>
   <text x="600" y="146" font-family="Meslo, Menlo, monospace" font-size="10" fill="#000000"># Política de Teletrabalho<tspan fill="#4d6fa8">   ← h1</tspan></text>
   <text x="600" y="162" font-family="Meslo, Menlo, monospace" font-size="10" fill="#000000">## 3. Elegibilidade por país<tspan fill="#4d6fa8"> ← h2</tspan></text>
   <text x="600" y="178" font-family="Meslo, Menlo, monospace" font-size="10" fill="#000000">### 3.2 Espanha<tspan fill="#4d6fa8">   ← h3</tspan></text>
   <text x="600" y="204" font-family="Meslo, Menlo, monospace" font-size="10" fill="#000000">| Cargo   | Dias/sem. |</text>
   <text x="600" y="220" font-family="Meslo, Menlo, monospace" font-size="10" fill="#000000">| Gerente | 2         |</text>
-  <text x="600" y="252" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5">a tabela continua tabela →</text>
+  <text x="600" y="252" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5">a tabela continua sendo tabela →</text>
   <text x="600" y="270" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5">o chunk mantém o caminho de títulos</text>
-</svg></div><figcaption>Parsing: a extração de texto puro perde a estrutura; o parsing consciente da estrutura mantém títulos e tabelas</figcaption></figure>
+</svg></div><figcaption>Parsing: a extração de texto puro perde a estrutura; o parsing que respeita a estrutura mantém títulos e tabelas</figcaption></figure>
 
 
-Evidências:
+Os estudos concordam nisso:
 
-- **ColPali** (ICLR 2025): seus autores "em geral constatam que otimizar o pipeline de ingestão traz melhorias muito maiores do que otimizar o modelo de embedding". O ColPali indexa diretamente **imagens das páginas**, sem extrair texto nem fazer chunking, e obteve 81.3 de nDCG@5 contra ~65–67 dos pipelines de parsing no benchmark ViDoRe.
-- **Unstructured, FinanceBench (2024)**: o chunking por elementos do documento (títulos, tabelas) alcançou 53.2% de acurácia contra 48.2% com chunks fixos de 512 tokens, usando metade dos chunks.
-- Estudo em língua turca (2026): o chunking consciente do layout ajuda muito mais em documentos com tabelas do que em documentos só de texto.
+- Os autores do ColPali (ICLR 2025) "costumam constatar que otimizar o pipeline de ingestão traz melhorias muito maiores do que otimizar o modelo de embedding". O próprio ColPali dispensa a extração de texto e o chunking e indexa diretamente as imagens das páginas; no benchmark ViDoRe ele marcou 81.3 de nDCG@5, contra ~65–67 dos pipelines de parsing.
+- No estudo da Unstructured sobre o FinanceBench (2024), o chunking por elementos do documento (títulos, tabelas) chegou a 53.2% de acurácia, contra 48.2% com chunks fixos de 512 tokens, e usou metade dos chunks.
+- Um estudo em turco (2026) constatou que o chunking que respeita o layout ajuda muito mais em documentos com tabelas do que em documentos só de texto.
 
-Ferramentas: Document Layout skill (Azure), Document AI Layout Parser (Google), Docling (IBM, open source). Veja a comparação na seção 22.
+As ferramentas mais usadas são a Document Layout skill (Azure), o Document AI Layout Parser (Google) e o Docling (IBM, open source). A seção 22 compara as três.
 
 ### 4. Chunking
 
-**O que é:** dividir cada documento em pedaços pequenos (*chunks*) que são indexados separadamente.
+O chunking divide cada documento em pedaços pequenos (*chunks*) que são indexados separadamente.
 
 #### 4.1 As estratégias
 
 | Estratégia | Como divide | Custo |
 |----|----|----|
-| **Tamanho fixo** | A cada N tokens, com sobreposição opcional | Mínimo |
-| **Recursivo** | Tenta dividir por parágrafo, depois por linha, depois por frase… | Mínimo |
-| **Por estrutura / página** | Pelas seções, títulos ou páginas do documento | Baixo (exige um bom parsing) |
-| **Semântico** | Divide onde o significado muda entre frases, medido com embeddings | Médio |
-| **Baseado em LLM ("agêntico")** | Um modelo decide onde dividir | Alto |
-| **Proposições** | Um modelo reescreve o texto em fatos atômicos | Alto |
+| Tamanho fixo | A cada N tokens, com sobreposição opcional | Mínimo |
+| Recursivo | Tenta dividir por parágrafo, depois por linha, depois por frase… | Mínimo |
+| Por estrutura / página | Pelas seções, títulos ou páginas do documento | Baixo (exige um bom parsing) |
+| Semântico | Divide onde o sentido muda entre frases, medido com embeddings | Médio |
+| Baseado em LLM ("agêntico") | Um modelo decide onde dividir | Alto |
+| Proposições | Um modelo reescreve o texto em fatos atômicos | Alto |
 
-#### 4.2 O que dizem as evidências: o chunking semântico é superestimado
+#### 4.2 O que diz a evidência: o chunking semântico é superestimado
 
-- **Vectara (2024), "Is Semantic Chunking Worth the Computational Cost?"**: "os custos computacionais associados ao chunking semântico não são justificados por ganhos de desempenho consistentes". Nos 4 datasets de documentos reais, o chunking de tamanho fixo venceu (ex.: HotpotQA, F1@5: 90.59 fixo vs 87.37 semântico). O modelo de embedding importou mais do que o chunking.
-- **Chroma (2024)**: a estratégia de chunking altera o recall em até 9%. O chunker semântico padrão ficou um pouco abaixo da média (83.6% de recall), enquanto um chunker recursivo de 200 tokens sem sobreposição chegou a 88.1%, perto do melhor (91.9%, que usa um modelo de linguagem e é muito mais caro).
-- **NVIDIA (junho de 2025)**: o chunking **por página** deu a melhor acurácia média (0.648) e a menor variância entre datasets.
-- **Biomedicina (2026)**: o chunking semântico ganhou +8.4 pontos de F1 em um dataset, mas em outros o chunking de tamanho fixo "continua competitivo ou melhor". Depende do domínio.
+- A Vectara (2024) perguntou "Is Semantic Chunking Worth the Computational Cost?" e concluiu que "os custos computacionais associados ao chunking semântico não se justificam por ganhos de desempenho consistentes". O chunking de tamanho fixo venceu nos 4 datasets de documentos reais (no HotpotQA, por exemplo, o F1@5 foi 90.59 com tamanho fixo contra 87.37 com o semântico). O modelo de embedding pesou mais do que o chunking.
+- A Chroma (2024) constatou que a estratégia de chunking muda o recall em até 9%. O chunker semântico padrão dela ficou um pouco abaixo da média (83.6% de recall), enquanto um chunker recursivo de 200 tokens sem sobreposição chegou a 88.1%. O melhor resultado (91.9%) usou um modelo de linguagem e custou bem mais.
+- A NVIDIA (junho de 2025) obteve a melhor acurácia média (0.648) e a menor variância entre datasets com chunking **por página**.
+- Em biomedicina (2026), o chunking semântico ganhou +8.4 pontos de F1 em um dataset, mas nos demais o chunking de tamanho fixo "continua competitivo ou melhor". Depende do domínio.
 
-#### 4.3 O que funciona de verdade: adicionar contexto a cada chunk
+#### 4.3 O que funciona: adicionar contexto a cada chunk
 
 <table>
 <colgroup>
@@ -319,8 +298,8 @@ Ferramentas: Document Layout skill (Azure), Document AI Layout Parser (Google), 
 </colgroup>
 <thead>
 <tr>
-<th>❌ Chunk sem contexto</th>
-<th>✅ Chunk com contexto</th>
+<th>Chunk sem contexto</th>
+<th>Chunk com contexto</th>
 </tr>
 </thead>
 <tbody>
@@ -328,33 +307,35 @@ Ferramentas: Document Layout skill (Azure), Document AI Layout Parser (Google), 
 <td><code>"| Manager | 2 |"</code><br />
 <span class="note">→ 2 o quê? onde?</span></td>
 <td><code>"Remote Work Policy &gt; 3. Eligibility &gt; 3.2 Spain | Manager | 2 days/week |"</code><br />
-<span class="note">→ compreensível por si só</span></td>
+<span class="note">→ dá para entender sozinho</span></td>
 </tr>
 </tbody>
 </table>
 
-- **Anthropic, Contextual Retrieval (set. 2024)**: um modelo gera 50–100 tokens de contexto que são antepostos a cada chunk. Taxa de falha de recuperação (entre os 20 primeiros resultados), partindo de uma linha de base de 5.7%:
-  - Contexto só nos vetores: 3.7% (**−35%**)
-  - Contexto nos vetores **e** no BM25: 2.9% (**−49%**)
-  - Tudo o que foi citado acima **mais um reranker**: 1.9% (**−67%**)
-  - Custo único: ~\$1.02 por milhão de tokens de documento, usando prompt caching.
-  - ⚠️ As três porcentagens são reduções em relação à linha de base (5.7%). O passo atribuível ao reranker vai de 2.9% para 1.9%.
-- **Late chunking (Jina, 2024)**: primeiro se calcula o embedding do documento inteiro e só depois se faz o chunking, de modo que cada vetor "sabe" de qual documento vem. Melhora o nDCG@10 em +2.7% a +3.6% sem retreinar.
+O **Contextual Retrieval** da Anthropic (set. 2024) faz um modelo escrever 50–100 tokens de contexto e os coloca no início de cada chunk. Medido como a taxa de falha de recuperação dentro dos 20 primeiros resultados, partindo de uma linha de base de 5.7%:
+
+- contexto só nos vetores: 3.7% (−35%)
+- contexto nos vetores e no BM25: 2.9% (−49%)
+- tudo isso mais um reranker: 1.9% (−67%)
+
+O custo, pago uma única vez, é de ~\$1.02 por milhão de tokens de documento com prompt caching. Cuidado ao citar esses números: as três porcentagens são reduções em relação à linha de base de 5.7%, então a contribuição do reranker em si é o passo de 2.9% para 1.9%.
+
+O late chunking (Jina, 2024) calcula primeiro o embedding do documento inteiro e só depois o divide, de modo que cada vetor "sabe" de que documento vem. Ele melhora o nDCG@10 de +2.7% a +3.6% sem retreinar.
 
 #### 4.4 Tamanhos iniciais
 
-- Perguntas factuais curtas: 64–128 tokens. Perguntas que precisam de contexto amplo: 512–1024 tokens (Bhat et al., 2025).
-- O Azure recomenda começar com **512 tokens e 25% de sobreposição**, e adicionar o título do documento aos chunks intermediários.
-- **Regra de ouro:** comece com chunking recursivo ou por seção/página de 256–512 tokens, não divida tabelas, adicione contexto e **ajuste medindo** (Parte VI).
+Bhat et al. (2025) sugerem 64–128 tokens para perguntas factuais curtas e 512–1024 tokens para perguntas que exigem contexto amplo. O Azure recomenda começar com 512 tokens e 25% de sobreposição, e adicionar o título do documento aos chunks do meio.
 
-### 5. Transformando texto em vetores (embeddings)
+Um padrão razoável: comece com chunking recursivo ou por seção/página de 256–512 tokens, não divida tabelas, adicione contexto e ajuste medindo (Parte VI).
+
+### 5. Transformar texto em vetores (embeddings)
 
 Um **embedding** é uma lista de números que representa o significado de um texto. Textos com significados parecidos ficam próximos:
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:549px" viewBox="0 0 820 380"  xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rag-embed-title rag-embed-desc">
   <title id="rag-embed-title">Embeddings aproximam significados parecidos</title>
-  <desc id="rag-embed-desc">Um espaço vetorial conceitual. Os pontos de laptop barato e notebook econômico ficam próximos porque significam quase a mesma coisa, enquanto política de férias fica longe porque não tem relação. A distância no espaço codifica diferença de significado, não palavras em comum.</desc>
+  <desc id="rag-embed-desc">Um espaço vetorial conceitual. Os pontos de notebook barato e laptop econômico ficam próximos porque significam quase a mesma coisa, enquanto política de férias fica longe porque não tem relação. A distância no espaço representa diferença de significado, não palavras em comum.</desc>
   <defs>
     <marker id="re-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#003da5"/></marker>
   </defs>
@@ -366,12 +347,12 @@ Um **embedding** é uma lista de números que representa o significado de um tex
   <line x1="232" y1="196" x2="360" y2="164" stroke="#003da5" stroke-width="1" stroke-dasharray="4,3"/>
   <rect x="252" y="168" width="80" height="14" rx="2" fill="#ffffff"/>
   <text x="292" y="178" font-family="Meslo, Menlo, monospace" font-size="9" fill="#4d6fa8" text-anchor="middle">perto</text>
-  <!-- point 1: cheap laptop (focal accent) -->
+  <!-- point 1: cheap laptop (highlighted accent) -->
   <circle cx="232" cy="196" r="9" fill="rgba(254,219,0,0.30)" stroke="#fedb00" stroke-width="1.6"/>
-  <text x="232" y="228" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#000000" text-anchor="middle">"laptop barato"</text>
+  <text x="232" y="228" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#000000" text-anchor="middle">"notebook barato"</text>
   <!-- point 2: inexpensive notebook -->
   <circle cx="360" cy="164" r="9" fill="rgba(254,219,0,0.30)" stroke="#fedb00" stroke-width="1.6"/>
-  <text x="360" y="148" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#000000" text-anchor="middle">"notebook econômico"</text>
+  <text x="360" y="148" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#000000" text-anchor="middle">"laptop econômico"</text>
   <!-- far point: vacation policy -->
   <line x1="256" y1="204" x2="628" y2="268" stroke="rgba(0,0,0,0.30)" stroke-width="1" stroke-dasharray="2,4"/>
   <rect x="410" y="232" width="60" height="14" rx="2" fill="#ffffff"/>
@@ -381,32 +362,29 @@ Um **embedding** é uma lista de números que representa o significado de um tex
   <!-- legend -->
   <line x1="40" y1="344" x2="780" y2="344" stroke="rgba(0,0,0,0.10)" stroke-width="0.8"/>
   <circle cx="52" cy="362" r="6" fill="rgba(254,219,0,0.30)" stroke="#fedb00" stroke-width="1.4"/>
-  <text x="66" y="365" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Sentido parecido — vizinhos próximos</text>
+  <text x="66" y="365" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Sentido parecido, vizinhos próximos</text>
   <circle cx="360" cy="362" r="6" fill="rgba(0,0,0,0.05)" stroke="#4d6fa8" stroke-width="1.4"/>
-  <text x="374" y="365" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Sem relação — longe, mesmo com palavras em comum</text>
+  <text x="374" y="365" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Sem relação, longe, mesmo com palavras em comum</text>
 </svg></div><figcaption>Embeddings aproximam significados parecidos e afastam textos sem relação</figcaption></figure>
 
 
 | Tipo | O que é | Exemplos |
 |----|----|----|
-| **Denso** | Centenas ou milhares de números, todos com valor | text-embedding-3 (OpenAI/Azure), gemini-embedding-001, Qwen3-Embedding, BGE-M3 |
-| **Esparso aprendido** | Lista de termos (quase todos zero) com pesos, expandida com termos relacionados | SPLADE, ELSER (Elastic), modo esparso do BGE-M3 |
-| **Multivetor** | Um vetor por token; a comparação é feita token a token | ColBERT, ColPali |
+| Denso | Centenas ou milhares de números, todos com valor | text-embedding-3 (OpenAI/Azure), gemini-embedding-001, Qwen3-Embedding, BGE-M3 |
+| Esparso aprendido | Lista de termos (quase todos zero) com pesos, expandida com termos relacionados | SPLADE, ELSER (Elastic), modo esparso do BGE-M3 |
+| Multivetor | Um vetor por token; a comparação é feita token a token | ColBERT, ColPali |
 
-Dicas:
-
-- **Meça com os seus próprios dados.** Os leaderboards públicos (como o MTEB) mudam todo mês e nem sempre refletem o seu domínio.
-- **Fixe a versão do modelo.** Se você misturar vetores de modelos diferentes, as buscas deixam de fazer sentido.
+Meça com os seus próprios dados. Os rankings públicos (como o MTEB) mudam todo mês e nem sempre refletem o seu domínio. E fixe a versão do modelo: se você misturar vetores de modelos diferentes, as buscas deixam de fazer sentido.
 
 ### 6. Índice e permissões
 
-O **índice** armazena cada chunk com seu texto, seu vetor e seus **metadados**:
+O índice guarda cada chunk com seu texto, seu vetor e seus metadados:
 
 | Campo(s) no índice                 | Finalidade                       |
 |------------------------------------|----------------------------------|
 | `id, content, content_vector`      | o texto do chunk e seu embedding |
 | `title, section, page, source_url` | de onde veio                     |
-| `allowed_groups` 🔒                | grupos autorizados a vê-lo       |
+| `allowed_groups`                   | grupos que podem vê-lo           |
 | `last_modified`                    | atualidade                       |
 
 Sem `allowed_groups` e um **filtro de segurança** em cada busca, um estagiário poderia receber chunks de documentos do comitê executivo.
@@ -415,56 +393,53 @@ Sem `allowed_groups` e um **filtro de segurança** em cada busca, um estagiário
 
 ### 7. BM25: busca por palavras-chave
 
-O BM25 é o algoritmo clássico de busca por palavras-chave (lexical) e o padrão no Elasticsearch, no OpenSearch e no Azure AI Search. Funciona sobre um **índice invertido**, como o índice remissivo no final de um livro:
+O BM25 é o algoritmo clássico de busca por palavras-chave (léxica) e o padrão no Elasticsearch, no OpenSearch e no Azure AI Search. Ele funciona sobre um **índice invertido**, que se parece com o índice remissivo no final de um livro:
 
-| Termo           | Documentos onde aparece (postings)    |
+| Termo           | Documentos em que aparece (postings)  |
 |-----------------|---------------------------------------|
 | `"remote work"` | doc3, doc7, doc12                     |
 | `"manager"`     | doc7, doc9                            |
 | `"spain"`       | doc7, doc12, doc15                    |
 
-Sua pontuação combina três ingredientes:
+A pontuação tem três partes:
 
 | Ingrediente | Ideia | Exemplo |
 |----|----|----|
-| **Frequência do termo** | Mais ocorrências = mais pontos, **mas com saturação** (parâmetro `k1`, 1.2 por padrão no Elasticsearch †) | 3 vezes \> 1 vez, mas 20 vezes ≈ 10 vezes |
-| **Raridade do termo** | Palavras raras valem mais | "ORA-00942" vale muito; "de" quase nada |
-| **Tamanho do documento** | Um texto curto que contém a palavra pontua mais do que um longo (parâmetro `b`, 0.75 por padrão †) | Um parágrafo específico ganha de um manual inteiro |
+| Frequência do termo | Mais ocorrências = mais pontos, mas com saturação (parâmetro `k1`, 1.2 por padrão no Elasticsearch †) | 3 vezes \> 1 vez, mas 20 vezes ≈ 10 vezes |
+| Raridade do termo | Palavras raras valem mais | "ORA-00942" vale muito; "de" quase nada |
+| Tamanho do documento | Um texto curto que contém a palavra pontua mais do que um longo (parâmetro `b`, 0.75 por padrão †) | Um parágrafo específico ganha de um manual inteiro |
 
-- ✅ Rápido, sem modelos, explicável, excelente para **termos exatos** (códigos, siglas, nomes próprios).
-- ❌ Não entende sinônimos: *"laptop barato"* não encontra *"notebook econômico"*.
+O BM25 é rápido, não precisa de modelo, pode ser explicado e é excelente para termos exatos como códigos, siglas e nomes próprios. O ponto fraco são os sinônimos: *"notebook barato"* não encontra *"laptop econômico"*.
 
 ### 8. Busca semântica: pelo significado
 
-#### 8.1 Vetores densos (busca por vizinhos mais próximos)
+#### 8.1 Vetores densos (busca de vizinhos mais próximos)
 
-A pergunta é transformada em vetor e os chunks mais próximos são recuperados. Para fazer isso rapidamente sobre milhões de vetores, usa-se um índice aproximado (geralmente **HNSW**, um grafo de vizinhos).
+Aqui a pergunta vira um vetor e você recupera os chunks mais próximos. Fazer isso rápido sobre milhões de vetores exige um índice aproximado, geralmente **HNSW** (um grafo de vizinhos).
 
-- ✅ Entende sinônimos, paráfrases e idiomas diferentes.
-- ❌ É uma caixa-preta (não dá para explicar por que algo deu match), pode confundir códigos quase idênticos (ORA-00942 vs ORA-00943) e usa mais memória. Para reduzir a memória existe a **quantização** (comprimir os números, por exemplo para 8 bits ou para binário).
+A busca densa entende sinônimos, paráfrases e idiomas diferentes. Por outro lado, é uma caixa-preta (não dá para explicar por que algo deu match), pode confundir códigos quase idênticos (ORA-00942 vs ORA-00943) e usa mais memória. A quantização reduz a memória comprimindo os números, por exemplo para 8 bits ou para binário.
 
 #### 8.2 Esparso aprendido (SPLADE, ELSER)
 
-É um meio-termo: um modelo **expande** o texto com termos relacionados e seus pesos, e depois busca em um índice invertido, como o BM25.
+O esparso aprendido fica entre os dois. Um modelo expande o texto com termos relacionados e seus pesos, e a busca roda sobre um índice invertido, como no BM25:
 
 ```
 "cheap laptop" → { laptop: 2.1, notebook: 1.8, computer: 1.2, cheap: 1.9, budget: 1.5, price: 0.9 }
 ```
 
-- ✅ Mais explicável que os vetores densos, e encontra sinônimos.
-- ❌ Depende do idioma do modelo (o ELSER é recomendado apenas para inglês) e tem limite de tokens (o ELSER codifica os primeiros 512 tokens de cada campo).
+É mais fácil de explicar do que os vetores densos e ainda encontra sinônimos. O problema é que depende do idioma do modelo (o ELSER é recomendado só para inglês) e tem limite de tokens (o ELSER codifica os primeiros 512 tokens de cada campo).
 
 #### 8.3 Qual vence
 
 | Consulta | BM25 | Denso | Esparso aprendido |
 |----|----|----|----|
-| *"laptop barato"* → doc com *"notebook econômico"* | ❌ | ✅ | ✅ |
-| *"erro ORA-00942"* → doc com esse código | ✅ | ⚠️ | ✅ |
-| *"posso trabalhar de casa?"* → doc com *"trabalho remoto"* | ❌ | ✅ | ✅ (se o idioma tiver suporte) |
-| Explicar por que deu match | ✅ | ❌ | 🟡 |
-| Custo | 💚 mínimo | 🟠 modelo + memória | 🟡 modelo |
+| *"notebook barato"* → doc com *"laptop econômico"* | Não | Sim | Sim |
+| *"erro ORA-00942"* → doc com esse código | Sim | Pouco confiável | Sim |
+| *"posso trabalhar de casa?"* → doc com *"trabalho remoto"* | Não | Sim | Sim, se o idioma tiver suporte |
+| Explicar por que deu match | Sim | Não | Em parte |
+| Custo | Mínimo | Modelo + memória | Modelo |
 
-Nenhum deles vence sempre, e é por isso que são combinados.
+Nenhum deles vence sempre, e é por isso que se combinam.
 
 ### 9. Busca híbrida e RRF
 
@@ -492,7 +467,7 @@ Nenhum deles vence sempre, e é por isso que são combinados.
 <text x="560" y="188" fill="#7a8399" font-size="8" font-family="Meslo, Menlo, monospace" text-anchor="middle" letter-spacing="0.06em">FUNDE</text>
 <rect x="744" y="180" width="48" height="12" rx="2" fill="#ffffff"/>
 <text x="768" y="188" fill="#7a8399" font-size="8" font-family="Meslo, Menlo, monospace" text-anchor="middle" letter-spacing="0.06em">REORDENA</text>
-<text x="928" y="64" fill="#2d3142" font-size="14" font-style="italic" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="end">RRF usa só posições:</text>
+<text x="928" y="64" fill="#2d3142" font-size="14" font-style="italic" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="end">O RRF usa só as posições:</text>
 <text x="928" y="84" fill="#2d3142" font-size="14" font-style="italic" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="end">premia a concordância entre as duas listas.</text>
 <path d="M 628,88 Q 520,100 480,160" fill="none" stroke="rgba(0,0,0,0.40)" stroke-width="1" stroke-dasharray="4,3"/>
 <circle cx="480" cy="160" r="2" fill="#2d3142"/>
@@ -506,7 +481,7 @@ Nenhum deles vence sempre, e é por isso que são combinados.
 <text x="244" y="140" fill="#4f5d75" font-size="9" font-family="Meslo, Menlo, monospace" text-anchor="middle">índice invertido</text>
 <rect x="168" y="248" width="152" height="64" rx="6" fill="#ffffff"/>
 <rect x="168" y="248" width="152" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
-<text x="244" y="272" fill="#2d3142" font-size="12" font-weight="600" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="middle">Vetores</text>
+<text x="244" y="272" fill="#2d3142" font-size="12" font-weight="600" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="middle">Vetorial</text>
 <text x="244" y="288" fill="#4f5d75" font-size="9" font-family="Meslo, Menlo, monospace" text-anchor="middle">sentido</text>
 <text x="244" y="300" fill="#4f5d75" font-size="9" font-family="Meslo, Menlo, monospace" text-anchor="middle">HNSW</text>
 <rect x="384" y="168" width="144" height="64" rx="6" fill="#ffffff"/>
@@ -528,13 +503,13 @@ Nenhum deles vence sempre, e é por isso que são combinados.
 <rect x="296" y="364" width="16" height="12" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
 <text x="320" y="372" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace">Etapa de busca</text>
 <rect x="472" y="364" width="16" height="12" rx="2" fill="rgba(235,108,54,0.14)" stroke="#eb6c36" stroke-width="1"/>
-<text x="496" y="372" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace">Fusão (foco)</text>
+<text x="496" y="372" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace">Fusão</text>
 </svg></div><figcaption>Figura · Busca híbrida: duas buscas, uma fusão RRF e um reranker</figcaption></figure>
 
 
 #### 9.1 O problema
 
-As duas buscas retornam pontuações em **escalas incompatíveis**:
+As duas buscas devolvem pontuações em escalas incompatíveis:
 
 | Posição | BM25 <span style="font-weight:400">(sem limite superior)</span> | Vetorial <span style="font-weight:400">(cosseno 0.33–1 no Azure)</span> |
 |----|----|----|
@@ -542,36 +517,36 @@ As duas buscas retornam pontuações em **escalas incompatíveis**:
 | 2 | doc_A → 9.1 | doc_C → 0.87 |
 | 3 | doc_D → 3.2 | doc_B → 0.81 |
 
-Somar 12.4 + 0.81 não faz sentido; seria como somar euros e quilos.
+Somar 12.4 + 0.81 faz tanto sentido quanto somar euros e quilos.
 
 #### 9.2 A solução: RRF (Reciprocal Rank Fusion)
 
-O RRF ignora as pontuações e usa **apenas a posição** de cada documento em cada lista:
+O RRF ignora as pontuações e usa só a posição de cada documento em cada lista:
 
 ```
 RRF(doc) = Σ  1 / (k + position of doc in that list)      with k = 60 typically
        over each list
 ```
 
-**Exemplo:**
+Vamos usar os mesmos rankings de antes:
 
 | Posição  | BM25  | Vetorial |
-|----------|-------|--------|
-| 1        | doc_B | doc_A  |
-| 2        | doc_A | doc_C  |
-| 3        | doc_D | doc_B  |
+|----------|-------|----------|
+| 1        | doc_B | doc_A    |
+| 2        | doc_A | doc_C    |
+| 3        | doc_D | doc_B    |
 
-| Doc   | Contribuição BM25 | Contribuição vetorial | **Total**   | Final |
-|-------|-------------------|---------------------|-------------|-------|
-| doc_A | 1/62 = 0.01613    | 1/61 = 0.01639      | **0.03252** | 🥇    |
-| doc_B | 1/61 = 0.01639    | 1/63 = 0.01587      | **0.03226** | 🥈    |
-| doc_C | 0                 | 1/62 = 0.01613      | **0.01613** | 🥉    |
-| doc_D | 1/63 = 0.01587    | 0                   | **0.01587** | 4     |
+| Doc   | Contribuição BM25 | Contribuição vetorial | Total   | Final |
+|-------|-------------------|-----------------------|---------|-------|
+| doc_A | 1/62 = 0.01613    | 1/61 = 0.01639        | 0.03252 | 1     |
+| doc_B | 1/61 = 0.01639    | 1/63 = 0.01587        | 0.03226 | 2     |
+| doc_C | 0                 | 1/62 = 0.01613        | 0.01613 | 3     |
+| doc_D | 1/63 = 0.01587    | 0                     | 0.01587 | 4     |
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rrf-scores-title rrf-scores-desc">
       <title id="rrf-scores-title">Exemplo de RRF com k = 60: pontuação por documento</title>
-      <desc id="rrf-scores-desc">Pontuação RRF final de quatro documentos: doc_A 0.03252 e doc_B 0.03226 aparecem nas duas listas e superam com folga doc_C 0.01613, só vetorial, e doc_D 0.01587, só BM25.</desc>
+      <desc id="rrf-scores-desc">Pontuação RRF final de quatro documentos: doc_A 0.03252 e doc_B 0.03226 aparecem nas duas listas e ficam bem à frente de doc_C 0.01613, só vetorial, e doc_D 0.01587, só BM25.</desc>
       <rect width="100%" height="100%" fill="#ffffff"/>
       <!-- Gridlines: escala 0 → 0.040, 80px = 0.005 (16000 px por unidad) -->
       <line x1="160" y1="64" x2="160" y2="336" stroke="rgba(0,0,0,0.08)" stroke-width="0.8"/>
@@ -614,7 +589,7 @@ RRF(doc) = Σ  1 / (k + position of doc in that list)      with k = 60 typically
       <rect x="160" y="272" width="252" height="40" fill="rgba(79,93,117,0.15)" stroke="#4f5d75" stroke-width="1"/>
       <text x="420" y="296" fill="#2d3142" font-size="12" font-weight="600" font-family="Meslo, Menlo, monospace">0.01587</text>
       <text x="488" y="296" fill="#4f5d75" font-size="12" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-style="italic">só BM25</text>
-      <text x="40" y="412" fill="#4f5d75" font-size="9" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">Posições — BM25: B, A, D · Vetorial: A, C, B</text>
+      <text x="40" y="412" fill="#4f5d75" font-size="9" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">Posições, BM25: B, A, D · Vetorial: A, C, B</text>
       <line x1="40" y1="436" x2="920" y2="436" stroke="rgba(0,0,0,0.10)" stroke-width="0.8"/>
       <text x="40" y="468" fill="#4f5d75" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.14em">LEGENDA</text>
       <rect x="120" y="456" width="16" height="16" rx="4" fill="rgba(235,108,54,0.14)" stroke="#eb6c36" stroke-width="1.2"/>
@@ -624,49 +599,51 @@ RRF(doc) = Σ  1 / (k + position of doc in that list)      with k = 60 typically
     </svg></div><figcaption>Figura · Exemplo de RRF com k = 60: pontuação por documento</figcaption></figure>
 
 
-O doc_A vence porque está **alto nas duas listas**. O RRF premia o **consenso** entre os dois métodos.
+O doc_A vence porque aparece bem colocado nas duas listas. O RRF premia a concordância entre os dois métodos.
 
 #### 9.3 Por que k = 60?
 
 |  | Posição 1 | Posição 2 | Diferença |
 |----|----|----|----|
-| **k = 0** | 1.000 | 0.500 | o dobro 😱 — ficar em 1º em uma única lista domina |
-| **k = 60** | 0.0164 | 0.0161 | quase igual ✓ — o que conta é ficar bem posicionado em várias listas |
+| k = 0 | 1.000 | 0.500 | o dobro: ser 1º em uma única lista domina |
+| k = 60 | 0.0164 | 0.0161 | quase igual: o que conta é ficar bem em várias listas |
 
-O valor vem do paper original (Cormack, Clarke e Büttcher, SIGIR 2009), onde foi escolhido empiricamente. O Azure AI Search documenta que ele funciona melhor com valores pequenos, como 60.
+O valor vem do artigo original (Cormack, Clarke e Büttcher, SIGIR 2009), onde foi escolhido empiricamente, e o Azure AI Search documenta que ele funciona melhor com valores pequenos, como 60.
 
 #### 9.4 Vantagens, limites e variantes
 
-- ✅ Sem calibração de escala, nada para treinar, e aceita N listas (BM25, vários vetores, várias reformulações da pergunta).
-- ⚠️ **Ignora a magnitude**: ser o primeiro "com folga" vale o mesmo que ser o primeiro "por um triz".
-- ⚠️ **Uma lista ruim conta do mesmo jeito**: se a busca vetorial retornar lixo, esse lixo também ganha pontos.
-- **RRF ponderado**: uma das listas recebe mais peso (por exemplo, a lista vetorial ×2). Disponível no Azure (*vector weighting*), no `EnsembleRetriever` do LangChain † e no Google Vector Search com `rrf_ranking_alpha`.
-- **Alternativa, combinação linear**: normalizar as pontuações e somá-las com pesos. Aproveita a magnitude, mas precisa ser calibrada com dados. Exemplos: o retriever `linear` do Elasticsearch, ou o DBSF no Qdrant †.
-- **RRF não é um reranker.** Ele apenas funde listas. O reranker vem depois.
+O RRF não precisa de calibração de escala nem de treino, e aceita N listas (BM25, vários vetores, várias reformulações da pergunta). Ele tem dois pontos fracos. Ignora a magnitude, então ser primeiro "com folga" vale o mesmo que ser primeiro "por um fio". E uma lista ruim conta do mesmo jeito: se a busca vetorial devolve lixo, esse lixo também ganha pontos.
+
+Há duas variantes comuns:
+
+- O RRF ponderado dá mais peso a uma das listas (por exemplo, a lista vetorial ×2). Está disponível no Azure (*vector weighting*), no `EnsembleRetriever` do LangChain † e no Google Vector Search com `rrf_ranking_alpha`.
+- A combinação linear normaliza as pontuações e as soma com pesos. Ela aproveita a magnitude, mas você precisa calibrá-la com dados. Exemplos são o retriever `linear` do Elasticsearch e o DBSF no Qdrant †.
+
+Tenha em mente que **o RRF não é um reranker.** Ele só funde listas, e o reranker vem depois.
 
 ### 10. Estratégias avançadas de recuperação
 
-| Técnica | O que faz | Evidência-chave |
+| Técnica | O que faz | Evidência principal |
 |----|----|----|
-| **Reescrita com histórico** | Transforma *"e quantos dias?"* em uma pergunta completa usando o chat anterior | Prática padrão |
-| **HyDE** | Um modelo escreve uma resposta hipotética e a busca é feita com ela | Compete com retrievers treinados, sem precisar de rótulos (Gao et al., 2022) |
-| **Multi-query / RAG-Fusion** | Várias reformulações da pergunta, fundidas com RRF | Mais cobertura; risco de fugir do tema |
-| **Step-back** | Primeiro perguntar algo mais geral | +27% no TimeQA, +7% no MuSiQue (Google DeepMind) |
-| **Decomposição** | Divide uma pergunta complexa em subperguntas | Base da busca agêntica |
-| **RAPTOR / parent document** | Resumos hierárquicos; busca pelo chunk pequeno e retorna o grande | RAPTOR + GPT-4: +20% absoluto no QuALITY |
-| **GraphRAG** | Grafo de entidades + resumos por comunidade | Melhora as perguntas **globais** ("quais temas se repetem?"). O LazyGraphRAG indexa a 0.1% do custo e faz consultas \>700× mais baratas. **Nem sempre vence**: em buscas específicas, o RAG clássico costuma empatar com ele ou superá-lo (Han et al., 2025/26; HippoRAG 2) |
-| **Adaptativo** (Self-RAG, Corrective RAG, Adaptive-RAG) | Decide quando buscar, quanto, e corrige se a busca foi ruim | O Adaptive-RAG roteia com base na complexidade da pergunta |
-| **Agêntico / "Deep Research"** | Busca iterativa treinada com aprendizado por reforço | Search-R1: +41% (7B) sobre o RAG de base; o OpenAI Deep Research leva de 5 a 30 minutos por tarefa |
-| **Contexto longo vs RAG** | Colocar tudo no prompt? | Os modelos se saem pior quando a informação está no meio do contexto ("Lost in the Middle"); recuperar demais piora a resposta; o eficiente é **rotear** cada consulta (Self-Route), e nenhuma opção vence sempre (LaRA) |
+| Reescrita com histórico | Transforma *"e quantos dias?"* em uma pergunta completa usando a conversa anterior | Prática padrão |
+| HyDE | Um modelo escreve uma resposta hipotética e a busca é feita com ela | Compete com retrievers treinados, sem precisar de rótulos (Gao et al., 2022) |
+| Multi-query / RAG-Fusion | Várias reformulações da pergunta, fundidas com RRF | Mais cobertura; risco de fugir do assunto |
+| Step-back | Primeiro pergunta algo mais geral | +27% no TimeQA, +7% no MuSiQue (Google DeepMind) |
+| Decomposição | Divide uma pergunta complexa em subperguntas | Base da busca agêntica |
+| RAPTOR / parent document | Resumos hierárquicos; busca pelo chunk pequeno e devolve o grande | RAPTOR + GPT-4: +20% absoluto no QuALITY |
+| GraphRAG | Grafo de entidades + resumos por comunidade | Melhora as perguntas globais ("quais temas se repetem?"). O LazyGraphRAG indexa a 0.1% do custo e faz consultas \>700× mais baratas. Nem sempre vence: em buscas específicas, o RAG clássico costuma empatar com ele ou superá-lo (Han et al., 2025/26; HippoRAG 2) |
+| Adaptativo (Self-RAG, Corrective RAG, Adaptive-RAG) | Decide quando buscar e quanto, e corrige se a busca foi ruim | O Adaptive-RAG roteia conforme a complexidade da pergunta |
+| Agêntico / "Deep Research" | Busca iterativa treinada com aprendizado por reforço | Search-R1: +41% (7B) sobre o RAG de base; o OpenAI Deep Research leva de 5 a 30 minutos por tarefa |
+| Contexto longo vs RAG | Colocar tudo no prompt? | Os modelos se saem pior quando a informação está no meio do contexto ("Lost in the Middle"); recuperar demais piora a resposta; o eficiente é rotear cada consulta (Self-Route), e nenhuma opção vence sempre (LaRA) |
 
 ### 11. Estudo de caso: Elasticsearch
 
-O Elasticsearch oferece quatro peças "semânticas" distintas, que é melhor não confundir:
+O Elasticsearch tem quatro peças "semânticas" diferentes, e é fácil confundi-las:
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:670px" viewBox="0 0 1000 360"  xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rag-es-title rag-es-desc">
   <title id="rag-es-title">Elasticsearch: três abordagens de recuperação sobre um tipo de campo</title>
-  <desc id="rag-es-desc">Três abordagens lado a lado no Elasticsearch — A vetores densos kNN, B esparso aprendido com ELSER e C reranking semântico — ficam acima de um tipo de campo compartilhado, D semantic_text, que faz o chunking do texto, gera embeddings automaticamente e alimenta as abordagens densa e de reranking semântico.</desc>
+  <desc id="rag-es-desc">Três abordagens lado a lado no Elasticsearch, A vetores densos kNN, B esparso aprendido com ELSER e C reranking semântico, ficam acima de um tipo de campo compartilhado, D semantic_text, que faz o chunking do texto, gera embeddings automaticamente e alimenta as abordagens densa e de reranking semântico.</desc>
   <defs>
     <marker id="es-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#003da5"/></marker>
   </defs>
@@ -698,32 +675,32 @@ O Elasticsearch oferece quatro peças "semânticas" distintas, que é melhor nã
   <text x="820" y="122" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">Reranking semântico</text>
   <text x="820" y="142" font-family="Meslo, Menlo, monospace" font-size="9" fill="#003da5" text-anchor="middle">text_similarity_reranker</text>
   <text x="820" y="158" font-family="Meslo, Menlo, monospace" font-size="9" fill="#4d6fa8" text-anchor="middle">/ RERANK no ES|QL</text>
-  <!-- D. semantic_text (focal, underpins A and C) -->
+  <!-- D. semantic_text (highlighted, underpins A and C) -->
   <rect x="40" y="244" width="920" height="72" rx="6" fill="#ffffff"/>
   <rect x="40" y="244" width="920" height="72" rx="6" fill="rgba(254,219,0,0.14)" stroke="#fedb00" stroke-width="1.4"/>
   <rect x="52" y="256" width="20" height="12" rx="2" fill="none" stroke="#fedb00" stroke-width="1"/>
   <text x="62" y="265" font-family="Meslo, Menlo, monospace" font-size="7" fill="#003da5" text-anchor="middle">D</text>
   <text x="500" y="278" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="600" fill="#000000" text-anchor="middle">tipo de campo semantic_text</text>
-  <text x="500" y="298" font-family="Meslo, Menlo, monospace" font-size="9" fill="#4d6fa8" text-anchor="middle">faz o chunking do texto e gera embeddings automaticamente — o padrão de baixo esforço que alimenta A e C</text>
+  <text x="500" y="298" font-family="Meslo, Menlo, monospace" font-size="9" fill="#4d6fa8" text-anchor="middle">faz o chunking do texto e gera embeddings automaticamente, o padrão de pouco esforço que alimenta A e C</text>
   <!-- legend -->
   <line x1="40" y1="336" x2="960" y2="336" stroke="rgba(0,0,0,0.10)" stroke-width="0.8"/>
   <text x="40" y="352" font-family="Meslo, Menlo, monospace" font-size="8" fill="#003da5" letter-spacing="0.14em">LEGENDA</text>
   <rect x="112" y="344" width="12" height="12" rx="2" fill="#ffffff" stroke="#000000" stroke-width="1"/>
   <text x="130" y="353" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Abordagem de busca</text>
   <rect x="300" y="344" width="12" height="12" rx="2" fill="rgba(254,219,0,0.14)" stroke="#fedb00" stroke-width="1.4"/>
-  <text x="318" y="353" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Campo compartilhado que as alimenta</text>
+  <text x="318" y="353" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Tipo de campo comum que as alimenta</text>
 </svg></div><figcaption>Elasticsearch: três abordagens de recuperação (A·B·C) sobre o campo compartilhado semantic_text (D)</figcaption></figure>
 
 
-- **A. Denso**: `dense_vector` + consulta `knn`. Quantização int8, int4 e BBQ. Modelos disponíveis: E5 (multilíngue), Jina (via Elastic Inference Service) ou externos (OpenAI, Azure OpenAI, Cohere, Bedrock, Vertex AI, Hugging Face).
-- **B. ELSER**: expande termos; não gera sinônimos, e sim associações aprendidas. Segundo o próprio benchmark BEIR da Elastic, melhora em média **18% no nDCG@10 sobre o BM25** (10 vitórias, 1 empate, 1 derrota). Recomendado para inglês, lê 512 tokens por campo e exige uma assinatura paga.
-- **C. Reranker**: o retriever `text_similarity_reranker` ou o comando `RERANK` no ES\|QL.
-- **D. `semantic_text`** (GA desde a versão 9.0). ⚠️ Se você não fixar o `inference_id`, depois de um upgrade de versão os novos índices podem usar um modelo diferente. **Em produção, sempre fixe o modelo.**
+- A. Denso: `dense_vector` + consulta `knn`, com quantização int8, int4 e BBQ. Você pode usar E5 (multilíngue), Jina (pelo Elastic Inference Service) ou modelos externos (OpenAI, Azure OpenAI, Cohere, Bedrock, Vertex AI, Hugging Face).
+- B. O ELSER expande termos. O que ele acrescenta são associações aprendidas, não sinônimos. No benchmark BEIR feito pela própria Elastic, ele melhora o nDCG@10 em relação ao BM25 em 18% na média (10 vitórias, 1 empate, 1 derrota). É recomendado para inglês, lê 512 tokens por campo e exige assinatura paga.
+- C. Reranker: o retriever `text_similarity_reranker` ou o comando `RERANK` no ES\|QL.
+- D. `semantic_text` (GA desde a versão 9.0). Se você não fixar o `inference_id`, índices novos podem passar a usar outro modelo depois de uma atualização de versão, então **fixe sempre o modelo em produção**.
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="elastic-retrievers-title elastic-retrievers-desc">
       <title id="elastic-retrievers-title">Elasticsearch: árvore de retrievers para busca híbrida com reranker</title>
-      <desc id="elastic-retrievers-desc">Três níveis aninhados: o retriever externo text_similarity_reranker (foco) reordena os top 50 com um modelo de rerank; dentro dele, o rrf funde dois retrievers standard: match com BM25 sobre content e semantic sobre um campo semantic_text.</desc>
+      <desc id="elastic-retrievers-desc">Três níveis aninhados: o retriever externo text_similarity_reranker reordena os top 50 com um modelo de rerank; dentro dele, o rrf funde dois retrievers standard: match com BM25 sobre content e semantic sobre um campo semantic_text.</desc>
       <defs>
         <marker id="elastic-retrievers-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
         <marker id="elastic-retrievers-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
@@ -734,7 +711,7 @@ O Elasticsearch oferece quatro peças "semânticas" distintas, que é melhor nã
       <rect x="56" y="32" width="200" height="16" rx="2" fill="#ffffff"/>
       <text x="64" y="44" fill="#4f5d75" font-size="8" font-weight="500" font-family="Meslo, Menlo, monospace" text-anchor="start" letter-spacing="0.14em">RETRIEVER EXTERNO · RERANK</text>
       <text x="72" y="84" fill="#2d3142" font-size="16" font-weight="600" font-family="Meslo, Menlo, monospace" text-anchor="start">text_similarity_reranker</text>
-      <text x="72" y="108" fill="#2d3142" font-size="12" font-weight="500" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="start">reordena os top 50 com um modelo de rerank ·<tspan font-family="Meslo, Menlo, monospace" font-size="12" font-weight="400" fill="#4f5d75">inference_id</tspan></text>
+      <text x="72" y="108" fill="#2d3142" font-size="12" font-weight="500" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="start">reordena os top 50 com um modelo de rerank · <tspan font-family="Meslo, Menlo, monospace" font-size="12" font-weight="400" fill="#4f5d75">inference_id</tspan></text>
       <rect x="72" y="136" width="816" height="272" rx="8" fill="#ffffff" stroke="#4f5d75" stroke-width="1"/>
       <rect x="88" y="128" width="64" height="16" rx="2" fill="#ffffff"/>
       <text x="96" y="140" fill="#4f5d75" font-size="8" font-weight="500" font-family="Meslo, Menlo, monospace" text-anchor="start" letter-spacing="0.14em">FUSÃO</text>
@@ -745,18 +722,18 @@ O Elasticsearch oferece quatro peças "semânticas" distintas, que é melhor nã
       <text x="128" y="232" fill="#4f5d75" font-size="8" font-weight="500" font-family="Meslo, Menlo, monospace" text-anchor="start" letter-spacing="0.14em">RETRIEVER FOLHA</text>
       <text x="284" y="276" fill="#2d3142" font-size="12" font-weight="600" font-family="Meslo, Menlo, monospace" text-anchor="middle">standard · match</text>
       <text x="284" y="308" fill="#2d3142" font-size="12" font-weight="600" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="middle">BM25</text>
-      <text x="284" y="332" fill="#4f5d75" font-size="9" font-weight="400" font-family="Meslo, Menlo, monospace" text-anchor="middle">sobre o campo content</text>
+      <text x="284" y="332" fill="#4f5d75" font-size="9" font-weight="400" font-family="Meslo, Menlo, monospace" text-anchor="middle">no campo content</text>
       <rect x="496" y="228" width="360" height="148" rx="8" fill="rgba(0,0,0,0.02)" stroke="#2d3142" stroke-width="1"/>
       <rect x="512" y="220" width="120" height="16" rx="2" fill="#ffffff"/>
       <text x="520" y="232" fill="#4f5d75" font-size="8" font-weight="500" font-family="Meslo, Menlo, monospace" text-anchor="start" letter-spacing="0.14em">RETRIEVER FOLHA</text>
       <text x="676" y="276" fill="#2d3142" font-size="12" font-weight="600" font-family="Meslo, Menlo, monospace" text-anchor="middle">standard · semantic</text>
       <text x="676" y="308" fill="#2d3142" font-size="12" font-weight="600" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="middle">Denso ou ELSER</text>
       <text x="676" y="332" fill="#4f5d75" font-size="9" font-weight="400" font-family="Meslo, Menlo, monospace" text-anchor="middle">campo semantic_text</text>
-      <text x="40" y="484" fill="#7a8399" font-size="14" font-weight="400" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="start" font-style="italic">Alternativa ao<tspan font-family="Meslo, Menlo, monospace" font-style="normal" font-size="12">rrf</tspan>: retriever <tspan font-family="Meslo, Menlo, monospace" font-style="normal" font-size="12">linear</tspan> (minmax / l2_norm)</text>
+      <text x="40" y="484" fill="#7a8399" font-size="14" font-weight="400" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="start" font-style="italic">Alternativa ao <tspan font-family="Meslo, Menlo, monospace" font-style="normal" font-size="12">rrf</tspan>: retriever <tspan font-family="Meslo, Menlo, monospace" font-style="normal" font-size="12">linear</tspan> (minmax / l2_norm)</text>
     </svg></div><figcaption>Figura · Elasticsearch: árvore de retrievers para busca híbrida com reranker</figcaption></figure>
 
 
-**Busca híbrida com reranker, em uma única chamada:**
+Esta é a busca híbrida com reranker em uma única chamada:
 
 ``` json
 {
@@ -782,9 +759,9 @@ O Elasticsearch oferece quatro peças "semânticas" distintas, que é melhor nã
 }
 ```
 
-Outras formas de fundir: o retriever `linear` (normalizadores `minmax` ou `l2_norm`) e, no ES\|QL, `FORK` + `FUSE` (RRF ou LINEAR) + `RERANK`. No formato multi-field, a Elastic normaliza os campos léxicos e semânticos para que cada grupo contribua com 50%.
+Você também pode fundir com o retriever `linear` (normalizadores `minmax` ou `l2_norm`) ou, no ES\|QL, com `FORK` + `FUSE` (RRF ou LINEAR) + `RERANK`. No formato multi-field, a Elastic normaliza os campos léxicos e semânticos para que cada grupo contribua com 50%.
 
-⚠️ **Armadilha de vocabulário:** na Elastic, *"semantic search"* significa buscar com embeddings. No Azure, o *"semantic ranker"* é um **reranker**.
+Atenção ao vocabulário. No Elastic, *"semantic search"* significa buscar com embeddings; no Azure, o *"semantic ranker"* é um reranker.
 
 ## Parte IV · Reranking
 
@@ -792,7 +769,7 @@ Outras formas de fundir: o retriever `linear` (normalizadores `minmax` ou `l2_no
 
 #### 12.1 O que é
 
-Um **reranker** pega os ~50–150 candidatos da busca e os reordena lendo **a pergunta e cada chunk juntos**. É mais preciso do que comparar vetores, porém mais lento, por isso só é aplicado a poucos candidatos.
+Um **reranker** pega os ~50–150 candidatos da busca e os reordena lendo a pergunta e cada chunk juntos. Isso é mais preciso do que comparar vetores, porém mais lento, então você só o aplica a poucos candidatos.
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 464" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bi-vs-cross-encoder-title bi-vs-cross-encoder-desc">
@@ -863,29 +840,29 @@ Um **reranker** pega os ~50–150 candidatos da busca e os reordena lendo **a pe
 <rect x="472" y="424" width="16" height="12" rx="2" fill="rgba(0,0,0,0.05)" stroke="#4f5d75" stroke-width="1"/>
 <text x="496" y="432" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace">Pré-calculado</text>
 <rect x="648" y="424" width="16" height="12" rx="2" fill="rgba(235,108,54,0.14)" stroke="#eb6c36" stroke-width="1"/>
-<text x="672" y="432" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace">Reranker (foco)</text>
+<text x="672" y="432" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace">Reranker</text>
 </svg></div><figcaption>Figura · Embeddings (bi-encoder) vs. reranker (cross-encoder)</figcaption></figure>
 
 
-**Arquitetura típica em duas etapas:** busca híbrida (prioriza a cobertura) → reranker sobre 100–150 candidatos → passar entre 10 e 20 chunks ao modelo que escreve a resposta.
+A arquitetura típica tem dois estágios: busca híbrida (que prioriza a cobertura), depois um reranker sobre 100–150 candidatos e, por fim, de 10 a 20 chunks entregues ao modelo que escreve a resposta.
 
 #### 12.2 Tipos
 
-| Tipo | Exemplos | Observação |
+| Tipo | Exemplos | Nota |
 |----|----|----|
-| **Cross-encoder clássico** | monoBERT, bge-reranker-v2-m3 | monoBERT: +27% em MRR@10 no MS MARCO (2019) |
-| **Modelo de linguagem como reranker** | RankGPT, RankZephyr (open source), Setwise | O RankZephyr empata com o GPT-4 ou o supera |
-| **Reranker com raciocínio** (2025–26) | Rank1, Rank-R1, ReasonRank | No BRIGHT (busca que exige raciocínio), o melhor modelo do MTEB cai de 59.0 para 18.3; raciocinar sobre a pergunta soma até +12.2 |
-| **Late interaction** | ColBERT | Meio-termo: ~100× mais rápido que um reranker BERT |
+| Cross-encoder clássico | monoBERT, bge-reranker-v2-m3 | monoBERT: +27% em MRR@10 no MS MARCO (2019) |
+| Modelo de linguagem como reranker | RankGPT, RankZephyr (open source), Setwise | O RankZephyr empata com o GPT-4 ou o supera |
+| Reranker com raciocínio (2025–26) | Rank1, Rank-R1, ReasonRank | No BRIGHT (busca que exige raciocínio), o melhor modelo do MTEB cai de 59.0 para 18.3; raciocinar sobre a pergunta acrescenta até +12.2 |
+| Late interaction | ColBERT | Meio-termo: ~100× mais rápido que um reranker BERT |
 
 #### 12.3 Modelos de destaque (verificados)
 
 | Modelo | Organização / data | Licença | Dado |
 |----|----|----|----|
-| Rerank 4 Pro / Fast | Cohere, dez. 2025 | Serviço pago | \#2 no leaderboard independente da Agentset (1627 pontos Elo vs ~1457 da v3.5) |
+| Rerank 4 Pro / Fast | Cohere, dez. 2025 | Serviço pago | \#2 no leaderboard independente da Agentset (1627 pontos Elo contra ~1457 da v3.5) |
 | zerank-2 | ZeroEntropy | Pesos abertos | \#1 na Agentset |
 | rerank-2.5 | Voyage (MongoDB), ago. 2025 | Serviço pago | Contexto de 32K, segue instruções |
-| Qwen3-Reranker 0.6/4/8B | Alibaba, jun. 2025 | Apache 2.0 | 69.76 no MTEB-R (4B) vs 57.03 do bge-v2-m3 |
+| Qwen3-Reranker 0.6/4/8B | Alibaba, jun. 2025 | Apache 2.0 | 69.76 no MTEB-R (4B) contra 57.03 do bge-v2-m3 |
 | jina-reranker-v3.5 | Jina, jul. 2026 | Não comercial | 63.20 no BEIR com 0.6B de parâmetros |
 | mxbai-rerank-large-v2 | Mixedbread, mar. 2025 | Apache 2.0 | 57.49 no BEIR |
 | Semantic ranker | Microsoft (Azure AI Search) | Serviço gerenciado | Reordena os top 50, nota de 0 a 4 |
@@ -893,20 +870,19 @@ Um **reranker** pega os ~50–150 candidatos da busca e os reordena lendo **a pe
 
 #### 12.4 Regras práticas
 
-- É a melhoria **mais barata e mais comprovada** (Anthropic: a taxa de falha cai de 2.9% para 1.9% só com a adição de um reranker).
-- **O reranker não busca, só reordena.** Se o documento correto não estiver entre os candidatos, ele não tem como salvar você. Por isso se mede primeiro a cobertura da recuperação (recall).
-- Diferencial atual: **rerankers que seguem instruções**, aos quais é possível passar regras de negócio como "priorize o conteúdo recente".
-- Todo fornecedor diz ser o melhor. Meça com os seus próprios dados.
-- Complementos úteis:
-  - **MMR**: remove chunks redundantes.
-  - **Compressão**: o LongLLMLingua dá +21.4% de qualidade com ~4× menos tokens.
-  - **Posição no prompt**: o conteúdo mais relevante no início ou no final ("Lost in the Middle").
+Um reranker é a melhoria mais barata e mais comprovada que você pode fazer. Nos números da Anthropic, só o acréscimo do reranker leva a taxa de falha de 2.9% para 1.9%.
+
+Mas **o reranker só reordena o que a busca encontrou.** Se o documento correto não está entre os candidatos, ele não tem como salvar você, e é por isso que primeiro se mede a cobertura da recuperação (recall).
+
+O que hoje diferencia os rerankers é a capacidade de seguir instruções: você pode passar regras de negócio como "priorize conteúdo recente". Todo fornecedor diz que é o melhor, então meça com os seus dados.
+
+Alguns complementos valem a pena. O MMR remove chunks redundantes. A compressão com LongLLMLingua dá +21.4% de qualidade com ~4× menos tokens. E a posição no prompt importa: coloque o conteúdo mais relevante no começo ou no fim ("Lost in the Middle").
 
 ## Parte V · Geração e guardrails
 
 ### 13. Geração com citações e guardrails
 
-**Estrutura do prompt:**
+O prompt fica assim:
 
 ```
 System:   Answer ONLY from the context. Cite every claim as [n].
@@ -916,20 +892,20 @@ Context:  [1] Remote Work Policy §3.2 Spain, p. 4: "Manager: 2 days/week..."
 Question: remote work days for a manager in Spain
 ```
 
-**Guardrails:**
+Os guardrails atuam antes, durante e depois da geração:
 
-1.  **Antes**: detectar tentativas de manipular o modelo ("jailbreak" ou prompt injection).
-2.  **Durante**: se o reranker não deixar nenhum chunk acima do limiar, responder "Não encontrei essa informação" em vez de inventar algo.
-3.  **Depois**: verificar se cada frase da resposta é sustentada pelos chunks. Se falhar, regenerar ou responder com cautela.
+1.  Antes, detectar tentativas de manipular o modelo ("jailbreak" ou prompt injection).
+2.  Durante, se o reranker não deixar nenhum chunk acima do limiar, responder "Não encontrei essa informação" em vez de inventar algo.
+3.  Depois, verificar se cada frase da resposta é sustentada pelos chunks. Se a verificação falhar, gerar de novo ou responder com cautela.
 
 ## Parte VI · Avaliação
 
-### 14. A ideia-chave: dois testes separados
+### 14. Dois testes separados
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 580" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="eval-cuadrante-title eval-cuadrante-desc">
       <title id="eval-cuadrante-title">Dois testes: recuperou bem? respondeu bem?</title>
-      <desc id="eval-cuadrante-desc">Matriz 2×2 que cruza se a recuperação encontrou os documentos certos com se a resposta foi boa, indicando a ação para cada caso; quando ambas falham, a prioridade é corrigir primeiro a recuperação.</desc>
+      <desc id="eval-cuadrante-desc">Matriz 2×2 que cruza se a recuperação encontrou os documentos certos com se a resposta foi boa e indica a ação para cada caso; quando as duas falham, a prioridade é corrigir primeiro a recuperação.</desc>
       <defs>
         <marker id="eval-cuadrante-axis-end" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><polygon points="0 0, 8 4, 0 8" fill="#2d3142"/></marker>
         <marker id="eval-cuadrante-axis-start" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto"><polygon points="8 0, 0 4, 8 8" fill="#2d3142"/></marker>
@@ -943,7 +919,7 @@ Question: remote work days for a manager in Spain
       <text x="176" y="216" fill="#4f5d75" font-size="12" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">Perigoso.</text>
       <rect x="520" y="96" width="280" height="160" rx="6" fill="rgba(0,0,0,0.04)" stroke="rgba(79,93,117,0.28)" stroke-width="1"/>
       <text x="536" y="120" fill="#4f5d75" font-size="8" font-weight="500" font-family="Meslo, Menlo, monospace" letter-spacing="0.18em">02 · RECUPERAÇÃO SIM / RESPOSTA SIM</text>
-      <text x="536" y="152" fill="#2d3142" font-size="16" font-weight="600" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">Tudo bem</text>
+      <text x="536" y="152" fill="#2d3142" font-size="16" font-weight="600" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">Tudo certo</text>
       <text x="536" y="200" fill="#4f5d75" font-size="12" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">Mantenha e monitore.</text>
       <rect x="160" y="296" width="280" height="160" rx="6" fill="rgba(235,108,54,0.14)" stroke="#eb6c36" stroke-width="1.2"/>
       <text x="176" y="320" fill="#4f5d75" font-size="8" font-weight="600" font-family="Meslo, Menlo, monospace" letter-spacing="0.18em">03 · RECUPERAÇÃO NÃO / RESPOSTA NÃO</text>
@@ -977,7 +953,7 @@ Se você olha só a resposta final, não sabe o que corrigir. A Microsoft chama 
 
 ### 15. O golden dataset (o "gabarito")
 
-É um conjunto de 100 a 300 perguntas, cada uma com sua resposta correta e os documentos que deveriam aparecer:
+O golden dataset é um conjunto de 100 a 300 perguntas, cada uma com a sua resposta correta e os documentos que deveriam aparecer:
 
 ``` json
 {"query": "Remote work days, manager, Spain?",
@@ -988,83 +964,71 @@ Se você olha só a resposta final, não sabe o que corrigir. A Microsoft chama 
 
 | De onde vêm as perguntas | Por quê |
 |----|----|
-| Logs de perguntas reais | É o que as pessoas realmente perguntam |
+| Logs de perguntas reais | É o que as pessoas de fato perguntam |
 | Especialistas do negócio (RH, jurídico) | Casos difíceis e armadilhas |
-| Geração sintética (RAGAS, simuladores dos provedores de nuvem) | Cobertura rápida, **sempre revisada por um humano** |
-| **Perguntas sem resposta** nos documentos | Verificam se o sistema diz "não sei" em vez de inventar |
+| Geração sintética (RAGAS, simuladores dos provedores de nuvem) | Cobertura rápida, mas sempre com revisão humana |
+| Perguntas sem resposta nos documentos | Verificam se o sistema diz "não sei" em vez de inventar |
 
 ### 16. Métricas de recuperação, com números
 
-**Exemplo:** para uma pergunta, os documentos corretos são **A e C**. O buscador retornou `[B, A, D, C, E]`.
+Digamos que, para uma pergunta, os documentos corretos sejam A e C, e o buscador tenha devolvido `[B, A, D, C, E]`.
 
 | Posição      | 1   | 2   | 3   | 4   | 5   |
 |--------------|-----|-----|-----|-----|-----|
-| **Retornado** | B   | A   | D   | C   | E   |
-| **Correto?** | ✗   | ✓   | ✗   | ✓   | ✗   |
+| Devolvido    | B   | A   | D   | C   | E   |
+| Correto?     | ✗   | ✓   | ✗   | ✓   | ✗   |
 
 | Métrica | Pergunta que responde | Cálculo | Valor |
 |----|----|----|----|
-| **Recall@3** (cobertura) | Quantos dos corretos aparecem no top 3? | 1 de 2 | **0.50** |
-| **Recall@5** | E no top 5? | 2 de 2 | **1.00** |
-| **Precision@5** (precisão) | Do que eu trouxe, quanto é útil? | 2 de 5 | **0.40** |
-| **MRR** (posição do primeiro acerto) | Quão acima está o primeiro correto? | 1/2 | **0.50** |
-| **nDCG@5** (qualidade do ranking) | Os corretos estão o mais acima possível? | Real = 1/log₂3 + 1/log₂5 = 1.06; ideal = 1 + 1/log₂3 = 1.63 | **0.65** |
+| Recall@3 (cobertura) | Quantos dos corretos aparecem no top 3? | 1 de 2 | 0.50 |
+| Recall@5 | E no top 5? | 2 de 2 | 1.00 |
+| Precision@5 (precisão) | Do que eu trouxe, quanto é útil? | 2 de 5 | 0.40 |
+| MRR (posição do primeiro acerto) | Em que altura está o primeiro correto? | 1/2 | 0.50 |
+| nDCG@5 (qualidade do ranking) | Os corretos estão o mais acima possível? | Real = 1/log₂3 + 1/log₂5 = 1.06; ideal = 1 + 1/log₂3 = 1.63 | 0.65 |
 
-**Como ler:**
-
-- **Recall@50 baixo** → o problema está na recuperação (chunking, embeddings, falta de BM25). O reranker não vai resolver.
-- **Recall@50 alto, mas nDCG@5 baixo** → o problema está no reranker.
+Esses números dizem onde olhar. Se o Recall@50 está baixo, o problema está na recuperação (chunking, embeddings, falta de BM25), e o reranker não vai resolver. Se o Recall@50 está alto mas o nDCG@5 está baixo, o problema está no reranker.
 
 ### 17. Métricas de resposta, com números
 
-Resposta do sistema: *"Você tem 2 dias por semana \[1\], 3 a partir de janeiro de 2026 \[2\], e pode escolher as sextas-feiras."*
+Suponha que o sistema responda: *"Você tem 2 dias por semana \[1\], 3 a partir de janeiro de 2026 \[2\], e pode escolher as sextas-feiras."*
 
 | Afirmação na resposta      | Sustentada pelos chunks? |
 |----------------------------|--------------------------|
 | `"2 days/week"`            | ✓                        |
 | `"3 from January 2026"`    | ✓                        |
-| `"you can choose Fridays"` | ✗ — **inventada**        |
+| `"you can choose Fridays"` | ✗ (inventada)            |
 
 | Métrica | Pergunta | Resultado |
 |----|----|----|
-| **Groundedness / Faithfulness** (o lado da *precisão*) | Tudo o que disse está nos chunks? | 2/3 = **0.67** ❌ alucinação |
-| **Completeness / Answer correctness** (o lado da *cobertura*) | Disse tudo o que a resposta correta diz? | 2/2 = **1.0** ✓ |
-| **Relevance** | Responde ao que foi perguntado? | ✓ |
-| **Citações corretas** | Cada \[n\] sustenta sua frase? | ✓ |
+| Groundedness / Faithfulness (o lado da *precisão*) | Tudo o que disse está nos chunks? | 2/3 = 0.67 ✗ alucinação |
+| Completeness / Answer correctness (o lado da *cobertura*) | Disse tudo o que a resposta correta diz? | 2/2 = 1.0 ✓ |
+| Relevância | Responde ao que foi perguntado? | ✓ |
+| Citações corretas | Cada \[n\] sustenta a sua frase? | ✓ |
 
-A Microsoft enquadra da mesma forma: a fidelidade ao contexto é o lado da precisão (não acrescentar nada) e a completude é o lado da cobertura (não deixar de fora nada crítico).
+A Microsoft enquadra da mesma forma: a fidelidade ao contexto é o lado da precisão (não acrescentar nada) e a completude é o lado da cobertura (não omitir nada crítico).
 
-**Avaliação por "nuggets"** (TREC 2024): você define os fatos atômicos que uma boa resposta deve conter e conta quantos aparecem.
+Outra opção é a avaliação por "nuggets" (TREC 2024): você define os fatos atômicos que uma boa resposta precisa conter e conta quantos aparecem.
 
 ### 18. O LLM como juiz
 
-Ninguém revisa 10,000 respostas à mão, então outro modelo faz o papel de professor. Mas ele tem vieses:
+Ninguém revisa 10,000 respostas à mão, então outro modelo faz o papel de professor. Esse juiz tem vieses conhecidos. Prefere a primeira opção que vê (posição), prefere respostas longas (verbosidade) e prefere textos da própria família de modelos (autopreferência).
 
-- prefere a primeira opção que vê (posição);
-- prefere respostas longas (verbosidade);
-- prefere textos da sua própria família de modelos (autopreferência).
-
-**Receita:**
+Para montar um juiz em que dê para confiar:
 
 1.  Um humano rotula 50–100 casos.
 2.  Meça a concordância juiz–humano (kappa de Cohen, acurácia, F1).
-3.  O juiz deve ser de uma **família de modelos diferente** da do gerador.
-4.  O juiz deve explicar sua nota.
+3.  O juiz deve ser de uma família de modelos diferente da do gerador.
+4.  O juiz deve explicar a sua nota.
 5.  Pontuar afirmação por afirmação (RAGChecker) ou por nuggets é melhor do que dar uma única nota geral.
 
-**Evidências:**
-
-- O GPT-4 como juiz alcança mais de 80% de concordância com humanos, o mesmo nível que entre dois humanos (Zheng et al., 2023).
-- No TREC 2024, a concordância perfeita humano–GPT-4o foi de 56%, e de 72% quando o humano estava corrigindo o rótulo do modelo.
-- Conclusão: o juiz LLM é confiável para comparar sistemas e menos confiável pergunta a pergunta.
-- O **ARES** combina algumas centenas de rótulos humanos com o juiz automático para produzir **intervalos de confiança** estatisticamente válidos.
+Até onde dá para confiar nele? O GPT-4 como juiz chega a mais de 80% de concordância com humanos, o mesmo nível observado entre dois humanos (Zheng et al., 2023). No TREC 2024, a concordância perfeita entre humano e GPT-4o foi de 56%, e de 72% quando o humano corrigia o rótulo do modelo. Ou seja, o juiz LLM é confiável para comparar sistemas e menos confiável pergunta a pergunta. O ARES combina algumas centenas de rótulos humanos com o juiz automático para produzir intervalos de confiança estatisticamente válidos.
 
 ### 19. Avaliação antes do deploy e em produção
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 664" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="eval-bucle-title eval-bucle-desc">
       <title id="eval-bucle-title">O ciclo de avaliação contínua</title>
-      <desc id="eval-bucle-desc">Ciclo de seis passos em sentido horário: golden dataset, avaliação offline, quality gate (foco), deploy, avaliação contínua e falhas reais com votos negativos, que retroalimentam o golden dataset; no centro, métricas de recuperação e de resposta.</desc>
+      <desc id="eval-bucle-desc">Ciclo de seis passos em sentido horário: golden dataset, avaliação offline, quality gate, deploy, avaliação contínua e falhas reais com votos negativos, que realimentam o golden dataset; no centro, as métricas de recuperação e de resposta.</desc>
       <defs>
         <marker id="eval-bucle-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
         <marker id="eval-bucle-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
@@ -1118,51 +1082,45 @@ Ninguém revisa 10,000 respostas à mão, então outro modelo faz o papel de pro
       <line x1="40" y1="612" x2="920" y2="612" stroke="rgba(0,0,0,0.10)" stroke-width="0.8"/>
       <text x="40" y="632" fill="#4f5d75" font-size="8" font-weight="500" font-family="Meslo, Menlo, monospace" text-anchor="start" letter-spacing="0.14em">LEGENDA</text>
       <line x1="140" y1="628" x2="176" y2="628" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#eval-bucle-arrow)"/>
-      <text x="184" y="632" fill="#2d3142" font-size="12" font-weight="400" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="start">Passo do ciclo</text>
+      <text x="184" y="632" fill="#2d3142" font-size="12" font-weight="400" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="start">Etapa do ciclo</text>
       <line x1="328" y1="628" x2="364" y2="628" stroke="#4f5d75" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#eval-bucle-arrow)"/>
       <text x="372" y="632" fill="#2d3142" font-size="12" font-weight="400" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="start">Grava nas métricas</text>
       <rect x="580" y="620" width="24" height="16" rx="4" fill="rgba(235,108,54,0.14)" stroke="#eb6c36" stroke-width="1.2"/>
-      <text x="612" y="632" fill="#2d3142" font-size="12" font-weight="400" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="start">Quality gate (foco)</text>
+      <text x="612" y="632" fill="#2d3142" font-size="12" font-weight="400" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="start">Quality gate</text>
     </svg></div><figcaption>Figura · O ciclo de avaliação contínua</figcaption></figure>
 
 
-**Exemplo de quality gate** na integração contínua: o Recall@10 não cai mais de 2 pontos · faithfulness ≥ 95% · "não sei" correto ≥ 90%. Em produção, uma porcentagem do tráfego real é amostrada e avaliada sem resposta de referência (faithfulness, relevância da resposta, relevância do contexto), junto com 👍/👎, latência e custo.
+Um quality gate na integração contínua poderia exigir que o Recall@10 não caia mais de 2 pontos, que a faithfulness fique ≥ 95% e que as respostas "não sei" corretas fiquem ≥ 90%. Esses limiares são só exemplos; quem define os reais é o negócio. Em produção, você amostra uma porcentagem do tráfego real e a avalia sem resposta de referência (faithfulness, relevância da resposta, relevância do contexto), junto com os votos positivos e negativos, a latência e o custo.
 
-Os limiares são **exemplos**; quem os define é o negócio.
-
-**Varredura de parâmetros.** A Microsoft recomenda testar combinações e medir qual vence. Os números a seguir são **ilustrativos**, não resultados reais:
+A Microsoft recomenda uma varredura de parâmetros (*parameter sweep*): testar combinações e medir qual vence. Os números abaixo são ilustrativos, não resultados reais:
 
 | Configuração | Recall@10 | nDCG@5 | Faithfulness | Latência |
 |----|----|----|----|----|
 | só vetorial | 0.71 | 0.58 | 0.90 | 0.8 s |
 | híbrida | 0.84 | 0.66 | 0.92 | 0.9 s |
-| **híbrida + rerank** ← escolhida | 0.84 | **0.79** | 0.95 | 1.3 s |
+| híbrida + rerank ← escolhida | 0.84 | 0.79 | 0.95 | 1.3 s |
 | \+ agêntica <span style="font-weight:400">(só perguntas complexas)</span> | 0.88 | 0.81 | 0.95 | 3.5 s |
 
-**Regras:**
-
-- No máximo umas 5 métricas por aplicação (DeepEval).
-- Use os mesmos avaliadores em desenvolvimento e em produção (MLflow / Databricks).
-- Em produção, você só pode usar métricas que não precisam de uma resposta correta.
+O DeepEval sugere no máximo umas 5 métricas por aplicação. MLflow / Databricks recomendam usar os mesmos avaliadores em desenvolvimento e em produção. E em produção você só pode usar métricas que não precisam de uma resposta correta.
 
 ### 20. Por que isso importa: alucinação em sistemas reais
 
 | Estudo | Resultado |
 |----|----|
-| Stanford (2024): ferramentas jurídicas comerciais com RAG | Alucinam entre **17% e 33%** das vezes |
-| CRAG (Meta, 2024) | Modelo sozinho: ≤34% de acurácia; RAG simples: 44%; os melhores sistemas RAG industriais respondem sem alucinar só **63%** das vezes |
-| FinanceBench (2023) | O GPT-4-Turbo com recuperação falhou ou se recusou a responder em 81% dos casos |
-| ALCE (2023) | Mesmo os melhores modelos não têm suporte completo para suas citações em 50% das vezes |
-| Vectara (leaderboard de 2026-09-22, tarefa de sumarização) | Taxas de alucinação entre 1.8% e 24.2% dependendo do modelo (GPT-4o 9.6%, Gemini 2.5 Pro 7.0%, Claude Sonnet 4.5 12.0%) |
-| FaithBench (2024) | Os melhores detectores de alucinação ficam em torno de **50%** de acurácia nos casos difíceis |
+| Stanford (2024): ferramentas jurídicas comerciais com RAG | Alucinam entre 17% e 33% das vezes |
+| CRAG (Meta, 2024) | Modelo sozinho: ≤34% de acurácia; RAG simples: 44%; os melhores sistemas de RAG industriais só respondem sem alucinar em 63% das vezes |
+| FinanceBench (2023) | O GPT-4-Turbo com recuperação errou ou se recusou a responder em 81% dos casos |
+| ALCE (2023) | Mesmo os melhores modelos não sustentam totalmente as suas citações em 50% das vezes |
+| Vectara (leaderboard de 2026-09-22, tarefa de resumo) | Taxas de alucinação entre 1.8% e 24.2% conforme o modelo (GPT-4o 9.6%, Gemini 2.5 Pro 7.0%, Claude Sonnet 4.5 12.0%) |
+| FaithBench (2024) | Os melhores detectores de alucinação ficam em torno de 50% de acurácia nos casos difíceis |
 
-Vários desses números são de 2023–2024, com modelos mais antigos. Sempre cite-os com ano e modelo.
+Vários desses números são de 2023–2024 e vêm de modelos mais antigos, então cite-os sempre com o ano e o modelo.
 
 ## Parte VII · Um exemplo em produção no Azure
 
 ### 21. Copiloto de políticas internas, passo a passo
 
-**Caso:** uma empresa com 20,000 funcionários. Documentos de RH, jurídico e compras no SharePoint e no Blob Storage. Requisitos: permissões por usuário, citações em cada resposta e "não sei" quando não houver informação.
+O caso é uma empresa com 20,000 funcionários, com documentos de RH, jurídico e compras no SharePoint e no Blob Storage. Ela precisa de permissões por usuário, citações em cada resposta e "não sei" quando não há informação.
 
 #### 21.1 Arquitetura
 
@@ -1224,7 +1182,7 @@ Vários desses números são de 2023–2024, com modelos mais antigos. Sempre ci
 <rect x="664" y="72" width="224" height="64" rx="6" fill="#ffffff"/>
 <rect x="664" y="72" width="224" height="64" rx="6" fill="rgba(235,108,54,0.14)" stroke="#eb6c36" stroke-width="1.2"/>
 <text x="776" y="92" fill="#2d3142" font-size="12" font-weight="600" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="middle">Azure AI Search</text>
-<text x="776" y="108" fill="#4f5d75" font-size="9" font-family="Meslo, Menlo, monospace" text-anchor="middle">BM25 + vector · RRF</text>
+<text x="776" y="108" fill="#4f5d75" font-size="9" font-family="Meslo, Menlo, monospace" text-anchor="middle">BM25 + vetor · RRF</text>
 <text x="776" y="120" fill="#4f5d75" font-size="9" font-family="Meslo, Menlo, monospace" text-anchor="middle">semantic ranker · allowed_groups</text>
 <rect x="72" y="232" width="224" height="64" rx="6" fill="#ffffff"/>
 <rect x="72" y="232" width="224" height="64" rx="6" fill="rgba(79,93,117,0.10)" stroke="#7a8399" stroke-width="1"/>
@@ -1242,7 +1200,7 @@ Vários desses números são de 2023–2024, com modelos mais antigos. Sempre ci
 <rect x="664" y="320" width="224" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
 <text x="776" y="340" fill="#2d3142" font-size="12" font-weight="600" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="middle">Content Safety</text>
 <text x="776" y="356" fill="#4f5d75" font-size="9" font-family="Meslo, Menlo, monospace" text-anchor="middle">detecção de manipulação †</text>
-<text x="776" y="368" fill="#4f5d75" font-size="9" font-family="Meslo, Menlo, monospace" text-anchor="middle">faithfulness (groundedness)</text>
+<text x="776" y="368" fill="#4f5d75" font-size="9" font-family="Meslo, Menlo, monospace" text-anchor="middle">fidelidade (groundedness)</text>
 <rect x="368" y="456" width="224" height="64" rx="6" fill="#ffffff"/>
 <rect x="368" y="456" width="224" height="64" rx="6" fill="rgba(0,0,0,0.05)" stroke="#4f5d75" stroke-width="1"/>
 <text x="480" y="480" fill="#2d3142" font-size="12" font-weight="600" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" text-anchor="middle">Application Insights</text>
@@ -1256,7 +1214,7 @@ Vários desses números são de 2023–2024, com modelos mais antigos. Sempre ci
 <text x="40" y="588" fill="#4f5d75" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.14em">LEGENDA</text>
 <rect x="112" y="580" width="20" height="12" rx="2" fill="#ffffff"/>
 <rect x="112" y="580" width="20" height="12" rx="2" fill="rgba(235,108,54,0.14)" stroke="#eb6c36" stroke-width="1"/>
-<text x="144" y="588" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">FOCAL</text>
+<text x="144" y="588" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">CHAVE</text>
 <rect x="192" y="580" width="20" height="12" rx="2" fill="#ffffff"/>
 <rect x="192" y="580" width="20" height="12" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
 <text x="224" y="588" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">SERVIÇO</text>
@@ -1272,11 +1230,11 @@ Vários desses números são de 2023–2024, com modelos mais antigos. Sempre ci
 <line x1="580" y1="584" x2="604" y2="584" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#azure-arquitectura-arrow)"/>
 <text x="612" y="588" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">FLUXO</text>
 <line x1="668" y1="584" x2="692" y2="584" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#azure-arquitectura-arrow-link)"/>
-<text x="700" y="588" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">CHAMADA LLM</text>
+<text x="700" y="588" fill="#2d3142" font-size="8" font-family="Meslo, Menlo, monospace" letter-spacing="0.06em">CHAMADA AO MODELO</text>
 </svg></div><figcaption>Figura · Copiloto de políticas internas no Azure</figcaption></figure>
 
 
-**Equivalências com uma stack LangChain + Chroma/Qdrant:**
+Se você conhece a stack LangChain + Chroma/Qdrant, as peças se correspondem assim:
 
 | Stack open source | No Azure |
 |----|----|
@@ -1288,7 +1246,7 @@ Vários desses números são de 2023–2024, com modelos mais antigos. Sempre ci
 
 #### 21.2 Uma pergunta, de ponta a ponta
 
-Ana, gerente em Madri, perguntou antes sobre seu contrato. Agora ela digita: **"e quantos dias posso trabalhar remotamente?"**
+Ana, gerente em Madri, perguntou sobre o contrato dela mais cedo na conversa. Agora ela digita *"e quantos dias posso trabalhar remotamente?"*
 
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:643px" viewBox="0 0 960 736" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="azure-secuencia-title azure-secuencia-desc">
@@ -1369,93 +1327,92 @@ Ana, gerente em Madri, perguntou antes sobre seu contrato. Agora ela digita: **"
     </svg></div><figcaption>Figura · Uma pergunta de ponta a ponta: “e quantos dias posso trabalhar remotamente?”</figcaption></figure>
 
 
-1.  **Reescrita:** o modelo usa o histórico do chat e gera a pergunta *"dias de trabalho remoto permitidos para um gerente na Espanha"*.
+1.  O modelo reescreve a pergunta usando o histórico da conversa: *"dias de trabalho remoto permitidos para um gerente na Espanha"*.
 
-2.  **Busca híbrida:** BM25 e busca vetorial rodam em paralelo e são fundidas com RRF (k=60). Antes da pontuação, o **filtro de segurança** remove tudo o que Ana não tem permissão para ver.
+2.  O BM25 e a busca vetorial rodam em paralelo e são fundidos com RRF (k=60). Antes da pontuação, o filtro de segurança remove tudo o que Ana não tem permissão para ver.
 
-3.  **Semantic ranker:** pega só os **top 50** e dá a eles uma nota de 0 a 4:
+3.  O semantic ranker pega só os top 50 e dá a eles notas de 0 a 4:
 
-    | Nota  | Significado                  |
-    |-------|------------------------------|
-    | 4     | Responde por completo        |
-    | 3     | Relevante, mas incompleto    |
-    | 2     | Parcial                      |
+    | Nota  | Significado                       |
+    |-------|-----------------------------------|
+    | 4     | Responde totalmente               |
+    | 3     | Relevante, mas incompleto         |
+    | 2     | Parcial                           |
     | 1     | Relacionado, responde muito pouco |
-    | 0     | Irrelevante                  |
+    | 0     | Irrelevante                       |
 
     Chunks com nota \< 2 são descartados. Se não sobrar nenhum, a resposta é "Não encontrei essa informação". A Microsoft avisa que a distribuição das notas pode variar um pouco, então os limiares não devem ser muito finos.
 
-4.  **Geração com citações** usando a estrutura de prompt da seção 13.
+4.  O modelo gera a resposta com citações, usando a estrutura de prompt da seção 13.
 
-5.  **Verificação de fidelidade:** confere-se se cada frase é sustentada pelos chunks. Se falhar, a resposta é regenerada ou dada com cautela.
+5.  Uma verificação de fidelidade confere se cada frase é sustentada pelos chunks. Se falhar, a resposta é gerada de novo ou dada com cautela.
 
-**Se a pergunta for complexa** (*"compare o trabalho remoto na Espanha vs México e me diga qual se aplica se eu me mudar"*): o **agentic retrieval** do Azure AI Search divide a pergunta em subconsultas, executa-as em paralelo, reordena cada uma com o semantic ranker e combina os resultados. O planejamento de consultas baseado em LLM e a síntese de respostas estão em **preview**.
+Uma pergunta complexa (*"compare o trabalho remoto na Espanha e no México e me diga qual se aplica se eu me mudar"*) vai para o agentic retrieval do Azure AI Search, que a divide em subconsultas, executa-as em paralelo, reordena cada uma com o semantic ranker e junta os resultados. O planejamento de consultas e a síntese de respostas com LLM ainda estão em preview.
 
-**Se a pergunta for global** (*"quais temas se repetem em todas as políticas de 2026?"*): é aí que o GraphRAG vale a pena.
+Uma pergunta global (*"quais temas se repetem em todas as políticas de 2026?"*) é onde o GraphRAG vale a pena.
 
 #### 21.3 Avaliação no Azure (Microsoft Foundry)
 
 | Avaliador | Tipo | Precisa de resposta correta | Status |
 |----|----|----|----|
-| **Document Retrieval** | Recuperação: NDCG, XDCG, Fidelity, Max Relevance, Holes | Sim (rótulos de relevância) | GA |
-| **Retrieval** | Recuperação, julgada por um modelo de linguagem (escala 1–5) | Não | GA |
-| **Groundedness** | Resposta: fidelidade ao contexto | Não | GA |
-| **Groundedness Pro** | Fidelidade estrita com Content Safety (true/false) | Não | **(preview)** |
-| **Relevance** | Resposta: responde à pergunta? | Não | GA |
-| **Response Completeness** | Resposta: deixa de fora algo crítico? | Sim | **(preview)** |
+| Document Retrieval | Recuperação: NDCG, XDCG, Fidelity, Max Relevance, Holes | Sim (rótulos de relevância) | GA |
+| Retrieval | Recuperação, julgada por um modelo de linguagem (escala 1–5) | Não | GA |
+| Groundedness | Resposta: fidelidade ao contexto | Não | GA |
+| Groundedness Pro | Fidelidade estrita com Content Safety (true/false) | Não | (preview) |
+| Relevance | Resposta: responde à pergunta? | Não | GA |
+| Response Completeness | Resposta: deixa de fora algo crítico? | Sim | (preview) |
 
-- Escala de 1 a 5; aprova com 3 por padrão.
-- **Avaliação contínua**: avalia amostras de tráfego real (porcentagem configurável, até 1000 requisições por hora) e envia os resultados ao Application Insights, vinculados aos traces.
+As notas vão de 1 a 5 e, por padrão, o limite de aprovação é 3. A avaliação contínua roda sobre amostras de tráfego real (porcentagem configurável, até 1000 requisições por hora) e envia os resultados para o Application Insights, vinculados aos traces.
 
 ## Parte VIII · Comparação: Azure vs Google Cloud vs open source
 
 ### 22. Azure vs Google Cloud vs open source
 
-**Novos nomes** (verificados em 2026-09-23):
+Alguns produtos mudaram de nome recentemente (verificado em 2026-09-23):
 
-- No Google, o *Vertex AI* agora aparece como **Gemini Enterprise Agent Platform**, o *Vertex AI Search* está sendo renomeado para **Agent Search** e o *Vector Search 2.0* agora se chama **Agent Retrieval**.
-- Na Microsoft, o *Azure AI Foundry* agora é **Microsoft Foundry**.
+- No Google, o *Vertex AI* agora aparece como Gemini Enterprise Agent Platform, o *Vertex AI Search* está sendo renomeado para Agent Search e o *Vector Search 2.0* agora se chama Agent Retrieval.
+- Na Microsoft, o *Azure AI Foundry* agora é Microsoft Foundry.
 
 #### Fase 1: Preparando os documentos
 
 | Etapa | O que faz | Azure | Google Cloud | Open source |
 |----|----|----|----|----|
-| **1. Fontes** | Onde ficam os documentos | Blob Storage, SharePoint | Cloud Storage, Google Drive | Sistema de arquivos, armazenamento compatível com S3 (MinIO) † |
-| **2. Leitura (parsing)** | PDF/Word → texto com estrutura | **Document Layout skill**, que usa o modelo de layout do Document Intelligence e retorna Markdown por seção | **Document AI Layout Parser**: versão estável desde 2024; versões com Gemini em preview; descrições de figuras e tabelas com Gemini em preview | **Docling** (IBM, MIT), **Unstructured**, MinerU †, Marker † |
-| **3. Chunking** | Chunks com contexto | Document Layout skill (por seção, ou tamanho fixo com sobreposição) e Text Split skill | O Layout Parser faz chunking por estrutura e adiciona os títulos pais. O RAG Engine permite definir tamanho e sobreposição | Text splitters do LangChain e do LlamaIndex; chunking do Docling † |
-| **4. Embeddings** | Texto → números | Azure OpenAI **text-embedding-3-large / -small** | **gemini-embedding-001** (até 3072 dimensões, 2048 tokens por texto), text-embedding-005 (inglês e código), text-multilingual-embedding-002 | **BGE-M3** (denso + esparso + multivetor, mais de 100 idiomas), **Qwen3-Embedding** (Apache 2.0), multilingual-E5 |
-| **5. Índice** | Banco de dados para busca | **Azure AI Search**: vetores, palavras-chave e filtros em um único serviço | **Vector Search / Agent Retrieval**, **RAG Engine** (banco gerenciado, Pinecone ou Weaviate) ou **Agent Search** (totalmente gerenciado) | **Qdrant, Chroma**, Weaviate, Milvus, pgvector, Elasticsearch / OpenSearch † |
-| **6. Permissões** | Cada usuário vê só o seu conteúdo | Entra ID + filtro de grupos no índice | Controle de acesso do Google (IAM) + controle de acesso por fonte de dados no Agent Search | Filtros de metadados no banco vetorial † |
+| 1. Fontes | Onde ficam os documentos | Blob Storage, SharePoint | Cloud Storage, Google Drive | Sistema de arquivos, armazenamento compatível com S3 (MinIO) † |
+| 2. Leitura (parsing) | PDF/Word → texto com estrutura | Document Layout skill, que usa o modelo de layout do Document Intelligence e devolve Markdown por seção | Document AI Layout Parser: versão estável desde 2024; versões com Gemini em preview; descrições de figuras e tabelas com Gemini em preview | Docling (IBM, MIT), Unstructured, MinerU †, Marker † |
+| 3. Chunking | Chunks com contexto | Document Layout skill (por seção, ou tamanho fixo com sobreposição) e Text Split skill | O Layout Parser divide por estrutura e adiciona os títulos pais. O RAG Engine permite definir tamanho e sobreposição | Text splitters do LangChain e do LlamaIndex; chunking do Docling † |
+| 4. Embeddings | Texto → números | Azure OpenAI text-embedding-3-large / -small | gemini-embedding-001 (até 3072 dimensões, 2048 tokens por texto), text-embedding-005 (inglês e código), text-multilingual-embedding-002 | BGE-M3 (denso + esparso + multivetor, mais de 100 idiomas), Qwen3-Embedding (Apache 2.0), multilingual-E5 |
+| 5. Índice | Banco onde se busca | Azure AI Search: vetores, palavras-chave e filtros em um único serviço | Vector Search / Agent Retrieval, RAG Engine (banco gerenciado, Pinecone ou Weaviate) ou Agent Search (totalmente gerenciado) | Qdrant, Chroma, Weaviate, Milvus, pgvector, Elasticsearch / OpenSearch † |
+| 6. Permissões | Cada usuário vê só o próprio conteúdo | Entra ID + filtro de grupos no índice | Controle de acesso do Google (IAM) + controle de acesso por fonte de dados no Agent Search | Filtros de metadados no banco vetorial † |
 
 #### Fase 2: Respondendo a uma pergunta
 
 | Etapa | O que faz | Azure | Google Cloud | Open source |
 |----|----|----|----|----|
-| **7. Reescrita** | Pergunta autônoma; dividir perguntas complexas | Query rewriting do semantic ranker (preview); busca agêntica com planejamento (preview) | Agent Search: perguntas de acompanhamento e respostas com busca agêntica | LangChain MultiQueryRetriever, HyDE, transformações de consulta do LlamaIndex † |
-| **8. Palavras-chave (BM25)** | Correspondência exata | BM25 integrado ao AI Search | **Vector Search**: você gera o vetor esparso (BM25, TF-IDF ou SPLADE) e faz o upload. **Agent Search**: gerenciado | BM25 do Elasticsearch/OpenSearch; vetores esparsos no Qdrant; SPLADE |
-| **9. Significado** | Vizinhos mais próximos | Vetores no AI Search | Vector Search / Agent Retrieval (milissegundos mesmo com bilhões de itens, segundo o Google) | Qdrant, Chroma, Weaviate, Milvus, pgvector † |
-| **10. Fusão** | Combinar listas | **RRF automático** (k=60), com peso configurável para os vetores | **RRF** com `rrf_ranking_alpha` | RRF no Qdrant †, busca híbrida do Weaviate †, **EnsembleRetriever** do LangChain † |
-| **11. Reranker** | Reordenar lendo pergunta e chunk juntos | **Semantic ranker**: os top 50, nota 0–4 | **Ranking API**: `semantic-ranker-default-004` / `-fast-004` (1024 tokens, 25 idiomas, nota 0–1, até 1000 chunks por chamada). A versão 005 está em preview desde 1º de set. de 2026 e se tornará o padrão **no mais tardar em 1º de out. de 2026** | **bge-reranker-v2-m3**, **Qwen3-Reranker** (Apache 2.0), **mxbai-rerank-v2** (Apache 2.0), ColBERTv2; ou um modelo de linguagem como reranker |
-| **12. Agente** | Buscas encadeadas | **Busca agêntica** / Foundry IQ (a parte de modelo de linguagem em preview) | Agent Development Kit (ADK) + Agent Runtime; agente Gemini Deep Research | LangGraph, agentes do LlamaIndex † |
-| **13. GraphRAG** | Grafo para perguntas globais | Microsoft **GraphRAG** (open source) implantado no Azure; LazyGraphRAG no Microsoft Discovery | Nenhum equivalente gerenciado encontrado (em 2026-09-23) | **GraphRAG** (Microsoft), **LightRAG**, **HippoRAG 2** |
+| 7. Reescrita | Pergunta autossuficiente; dividir perguntas complexas | Query rewriting do semantic ranker (preview); busca agêntica com planejamento (preview) | Agent Search: perguntas de acompanhamento e respostas com busca agêntica | LangChain MultiQueryRetriever, HyDE, transformações de consulta do LlamaIndex † |
+| 8. Palavras-chave (BM25) | Correspondência exata | BM25 embutido no AI Search | Vector Search: você gera o vetor esparso (BM25, TF-IDF ou SPLADE) e faz o upload. Agent Search: gerenciado | BM25 do Elasticsearch/OpenSearch; vetores esparsos no Qdrant; SPLADE |
+| 9. Significado | Vizinhos mais próximos | Vetores no AI Search | Vector Search / Agent Retrieval (milissegundos mesmo com bilhões de itens, segundo o Google) | Qdrant, Chroma, Weaviate, Milvus, pgvector † |
+| 10. Fusão | Combinar listas | RRF automático (k=60), com peso configurável para os vetores | RRF com `rrf_ranking_alpha` | RRF no Qdrant †, busca híbrida do Weaviate †, LangChain EnsembleRetriever † |
+| 11. Reranker | Reordenar lendo pergunta e chunk juntos | Semantic ranker: os top 50, nota 0–4 | Ranking API: `semantic-ranker-default-004` / `-fast-004` (1024 tokens, 25 idiomas, nota 0–1, até 1000 chunks por chamada). A versão 005 está em preview desde 1º de setembro de 2026 e passa a ser a padrão até 1º de outubro de 2026, no máximo | bge-reranker-v2-m3, Qwen3-Reranker (Apache 2.0), mxbai-rerank-v2 (Apache 2.0), ColBERTv2; ou um modelo de linguagem como reranker |
+| 12. Agente | Buscas encadeadas | Busca agêntica / Foundry IQ (a parte de modelo de linguagem em preview) | Agent Development Kit (ADK) + Agent Runtime; agente Gemini Deep Research | LangGraph, agentes do LlamaIndex † |
+| 13. GraphRAG | Grafo para perguntas globais | Microsoft GraphRAG (open source) implantado no Azure; LazyGraphRAG no Microsoft Discovery | Nenhum equivalente gerenciado encontrado (em 2026-09-23) | GraphRAG (Microsoft), LightRAG, HippoRAG 2 |
 
 #### Fase 3: Geração e guardrails
 
 | Etapa | O que faz | Azure | Google Cloud | Open source |
 |----|----|----|----|----|
-| **14. Modelo redator** | Resposta com citações | Modelos GPT no Azure OpenAI / Microsoft Foundry (também outros modelos no Foundry †) | **Gemini** (família 3.x); também Claude, Llama, Qwen e outros no Model Garden | Llama, Qwen, Mistral, gpt-oss servidos com **vLLM** ou **Ollama** † |
-| **15. Proteção da entrada** | Bloquear tentativas de manipulação | Content Safety – Prompt Shields † | **Model Armor** | NeMo Guardrails, Llama Guard † |
-| **16. Fidelidade aos documentos** | Cada frase é sustentada? | Avaliador Groundedness; Groundedness Pro (preview) | **Check Grounding API**: nota 0–1 por afirmação + citações, em menos de 500 ms | **HHEM-2.1-Open** (Vectara), MiniCheck |
+| 14. Modelo que escreve | Resposta com citações | Modelos GPT no Azure OpenAI / Microsoft Foundry (também outros modelos no Foundry †) | Gemini (família 3.x); também Claude, Llama, Qwen e outros no Model Garden | Llama, Qwen, Mistral, gpt-oss servidos com vLLM ou Ollama † |
+| 15. Proteção da entrada | Bloquear tentativas de manipulação | Content Safety – Prompt Shields † | Model Armor | NeMo Guardrails, Llama Guard † |
+| 16. Fidelidade aos documentos | Cada frase está sustentada? | Avaliador Groundedness; Groundedness Pro (preview) | Check Grounding API: nota 0–1 por afirmação + citações, em menos de 500 ms | HHEM-2.1-Open (Vectara), MiniCheck |
 
 #### Fase 4: Avaliação e monitoramento
 
 | Etapa | O que faz | Azure | Google Cloud | Open source |
 |----|----|----|----|----|
-| **17. Avaliar a recuperação** | Encontrou o que era certo? | **Document Retrieval** (NDCG, XDCG, Fidelity, Holes; precisa de rótulos) e **Retrieval** (juiz, sem rótulos) | **Evaluate search quality** no Agent Search; serviço de avaliação da Agent Platform | **RAGAS**, **DeepEval**, **RAGChecker**, **Open RAG Eval** (UMBRELA) |
-| **18. Avaliar a resposta** | Fiel, relevante e completa? | Groundedness, Relevance, Response Completeness (preview); escala 1–5, aprova com 3 | Serviço de avaliação com métricas baseadas em rubricas, juiz configurável e a opção de **avaliar o próprio juiz** | RAGAS, DeepEval, **TruLens** ("RAG triad"), **ARES** (intervalos de confiança) |
-| **19. Avaliação contínua** | Avaliar amostras de tráfego real | **Avaliação contínua** do Foundry: amostragem configurável, até 1000/hora, resultados no Application Insights | **Online Monitors**: a cada ~10 min, porcentagem e limite configuráveis, resultados no Cloud Logging e no Cloud Monitoring | Langfuse †, **Arize Phoenix**, **MLflow** |
-| **20. Traces** | Ver o que aconteceu em cada passo | Application Insights / Azure Monitor + OpenTelemetry | Cloud Trace, Cloud Logging, Cloud Monitoring + OpenTelemetry (atributos `gen_ai.`) | OpenTelemetry + Phoenix / Langfuse † |
-| **21. Deploy** | Onde a app roda | Container Apps, App Service, AKS (Kubernetes) † | Cloud Run, GKE (Kubernetes), Agent Runtime | Docker + Kubernetes, FastAPI † |
+| 17. Avaliar a recuperação | Encontrou o que devia? | Document Retrieval (NDCG, XDCG, Fidelity, Holes; precisa de rótulos) e Retrieval (juiz, sem rótulos) | Avaliação da qualidade de busca no Agent Search; serviço de avaliação da Agent Platform | RAGAS, DeepEval, RAGChecker, Open RAG Eval (UMBRELA) |
+| 18. Avaliar a resposta | Fiel, relevante e completa? | Groundedness, Relevance, Response Completeness (preview); escala 1–5, aprovado com 3 | Serviço de avaliação com métricas baseadas em rubricas, juiz configurável e a opção de avaliar o próprio juiz | RAGAS, DeepEval, TruLens ("RAG triad"), ARES (intervalos de confiança) |
+| 19. Avaliação contínua | Avaliar amostras de tráfego real | Avaliação contínua do Foundry: amostragem configurável, até 1000/hora, resultados no Application Insights | Online Monitors: a cada ~10 min, porcentagem e limite configuráveis, resultados no Cloud Logging e no Cloud Monitoring | Langfuse †, Arize Phoenix, MLflow |
+| 20. Traces | Ver o que aconteceu em cada etapa | Application Insights / Azure Monitor + OpenTelemetry | Cloud Trace, Cloud Logging, Cloud Monitoring + OpenTelemetry (atributos `gen_ai.`) | OpenTelemetry + Phoenix / Langfuse † |
+| 21. Deploy | Onde a app roda | Container Apps, App Service, AKS (Kubernetes) † | Cloud Run, GKE (Kubernetes), Agent Runtime | Docker + Kubernetes, FastAPI † |
 
 #### Resumo em uma imagem
 
@@ -1471,50 +1428,50 @@ Ana, gerente em Madri, perguntou antes sobre seu contrato. Agora ela digita: **"
 | Avaliação | Avaliadores do Foundry | Serviço de avaliação | RAGAS / DeepEval / TruLens |
 | Produção | Avaliação contínua | Online Monitors | Phoenix / MLflow / Langfuse |
 
-#### Três diferenças fundamentais
+#### Três diferenças que importam
 
-1.  **Busca híbrida.** No Azure AI Search, a busca por palavras-chave vem incluída. No **Google Vector Search você mesmo precisa gerar o vetor esparso**; se quiser que o Google gerencie isso, use o Agent Search. No open source, depende do banco de dados.
-2.  **Reranker.** O do Azure reordena só os **top 50**. A Ranking API do Google aceita **até 1000 chunks** e funciona com qualquer mecanismo de busca, inclusive um externo. No open source você controla o modelo, o custo e a latência, mas também precisa operá-lo.
-3.  **Avaliação.** As duas nuvens agora oferecem avaliação offline e avaliação contínua sobre tráfego real, com traces padrão (OpenTelemetry). No open source, RAGAS ou DeepEval (offline) mais Phoenix, MLflow ou Langfuse (produção) cobrem o mesmo terreno, mas a integração fica por sua conta.
+1.  Busca híbrida: o Azure AI Search já inclui busca por palavras-chave. No **Google Vector Search você mesmo precisa gerar o vetor esparso**; se quiser que o Google cuide disso, use o Agent Search. Em open source, depende do banco.
+2.  Reranker: o do Azure reordena só os top 50. A Ranking API do Google aceita até 1000 chunks e funciona com qualquer buscador, até um externo. Em open source você controla o modelo, o custo e a latência, mas também precisa operá-lo.
+3.  Avaliação: as duas nuvens agora oferecem avaliação offline e avaliação contínua sobre tráfego real, com traces padronizados (OpenTelemetry). Em open source, RAGAS ou DeepEval (offline) mais Phoenix, MLflow ou Langfuse (produção) cobrem o mesmo terreno, mas a integração fica por sua conta.
 
 ## Apêndice · Glossário
 
 | Termo | Significado simples |
 |----|----|
-| **Busca agêntica** | Um agente divide a pergunta e executa várias buscas |
-| **BM25** | Algoritmo clássico de busca por palavras-chave |
-| **Chunk** | Um pedaço de documento que é indexado separadamente |
-| **Kappa de Cohen** | Uma medida de concordância entre dois avaliadores que desconta a concordância ao acaso |
-| **Completude** | Que a resposta não deixe de fora informações importantes |
-| **Integração contínua (CI)** | Testes automatizados que rodam a cada mudança no código |
-| **Cross-encoder / bi-encoder** | Lê os dois textos juntos / transforma cada texto em um vetor separadamente |
-| **Denso / esparso** | Um vetor com todos os valores ativos / um vetor de termos com pesos, quase todos zero |
-| **Embedding / vetor** | Uma lista de números que representa o significado de um texto |
-| **Entra ID** | O sistema de identidade e acesso da Microsoft |
-| **Golden dataset** | Um conjunto de perguntas com suas respostas e documentos corretos |
-| **GraphRAG** | RAG com um grafo de entidades e relações |
-| **Groundedness / faithfulness** | Que a resposta não diga nada que não esteja nos documentos |
-| **Alucinação** | Quando o modelo inventa informações |
-| **HNSW** | Uma estrutura em forma de grafo para encontrar rapidamente os vetores mais próximos |
-| **Busca híbrida** | Combinar a busca por palavras-chave com a busca por significado |
-| **IAM** | O sistema de controle de acesso do Google Cloud |
-| **Índice invertido** | Uma tabela "palavra → documentos onde aparece" |
-| **kNN** | Encontrar os k vizinhos mais próximos |
-| **Modelo de linguagem (LLM)** | O modelo que escreve a resposta (GPT, Gemini, Claude, Llama…) |
-| **Juiz LLM** | Outro modelo que dá nota às respostas |
-| **MMR** | Uma técnica para remover resultados redundantes |
-| **MRR** | Quão acima aparece o primeiro resultado correto |
-| **nDCG** | Qualidade do ranking: se os itens corretos estão o mais acima possível (os avaliadores do Azure escrevem *NDCG*) |
-| **OpenTelemetry** | Um padrão aberto para registrar traces e métricas |
-| **Parsing** | Converter um arquivo (PDF, Word) em texto com estrutura |
-| **Precision@k** | Que fração dos top k resultados está correta |
-| **Preview / GA** | Recurso em testes / recurso oficial e estável |
-| **Quantização** | Comprimir os números dos vetores para economizar memória |
-| **RAG** | Geração aumentada por recuperação: buscar nos seus documentos antes de responder |
-| **Recall@k** | Que fração dos itens corretos aparece nos top k resultados |
-| **Reranker** | Um modelo que reordena os candidatos lendo a pergunta e o chunk juntos |
-| **RRF** | Reciprocal rank fusion: combinar listas usando apenas as posições |
-| **SPLADE / ELSER** | Modelos que expandem o texto com termos relacionados (esparso aprendido) |
+| Busca agêntica | Um agente divide a pergunta e faz várias buscas |
+| BM25 | Algoritmo clássico de busca por palavras-chave |
+| Chunk | Um pedaço de documento indexado separadamente |
+| Kappa de Cohen | Uma medida de concordância entre dois avaliadores que desconta a concordância ao acaso |
+| Completude (completeness) | Que a resposta não deixe de fora informação importante |
+| Integração contínua (CI) | Testes automatizados que rodam a cada mudança no código |
+| Cross-encoder / bi-encoder | Lê os dois textos juntos / transforma cada texto em vetor separadamente |
+| Denso / esparso | Um vetor com todos os valores ativos / um vetor de termos com pesos, quase todos zero |
+| Embedding / vetor | Uma lista de números que representa o significado de um texto |
+| Entra ID | O sistema de identidade e acesso da Microsoft |
+| Golden dataset | Um conjunto de perguntas com as respostas e os documentos corretos |
+| GraphRAG | RAG com um grafo de entidades e relações |
+| Groundedness / faithfulness | Que a resposta não diga nada que não esteja nos documentos |
+| Alucinação | Quando o modelo inventa informação |
+| HNSW | Uma estrutura em forma de grafo para encontrar rapidamente os vetores mais próximos |
+| Busca híbrida | Combinar busca por palavras-chave e busca por significado |
+| IAM | O sistema de controle de acesso do Google Cloud |
+| Índice invertido | Uma tabela "palavra → documentos em que aparece" |
+| kNN | Encontrar os k vizinhos mais próximos |
+| Modelo de linguagem (LLM) | O modelo que escreve a resposta (GPT, Gemini, Claude, Llama…) |
+| Juiz LLM | Outro modelo que dá nota às respostas |
+| MMR | Uma técnica para remover resultados redundantes |
+| MRR | Em que altura aparece o primeiro resultado correto |
+| nDCG | Qualidade do ranking: se os itens corretos estão o mais acima possível (os avaliadores do Azure escrevem *NDCG*) |
+| OpenTelemetry | Um padrão aberto para registrar traces e métricas |
+| Parsing | Converter um arquivo (PDF, Word) em texto com estrutura |
+| Precision@k | Que fração dos top k resultados está correta |
+| Preview / GA | Recurso em teste / recurso oficial e estável |
+| Quantização | Comprimir os números dos vetores para economizar memória |
+| RAG | Geração aumentada por recuperação: buscar nos seus documentos antes de responder |
+| Recall@k | Que fração dos itens corretos aparece nos top k resultados |
+| Reranker | Um modelo que reordena os candidatos lendo a pergunta e o chunk juntos |
+| RRF | Reciprocal rank fusion: combinar listas usando só as posições |
+| SPLADE / ELSER | Modelos que expandem o texto com termos relacionados (esparso aprendido) |
 
 ## Apêndice · Referências
 
@@ -1548,7 +1505,7 @@ Ana, gerente em Madri, perguntou antes sobre seu contrato. Agora ela digita: **"
 - ELSER: <https://www.elastic.co/docs/explore-analyze/machine-learning/nlp/ml-nlp-elser>
 - Retrievers: <https://www.elastic.co/docs/reference/elasticsearch/rest-apis/retrievers>
 
-### Papers e relatórios
+### Artigos e relatórios
 
 **Recuperação**
 
@@ -1615,5 +1572,3 @@ Ana, gerente em Madri, perguntou antes sobre seu contrato. Agora ela digita: **"
 - Vectara, *Open RAG Eval* — <https://github.com/vectara/open-rag-eval>
 - DeepEval, *Metrics* — <https://deepeval.com/docs/metrics-introduction>
 - Databricks, *Scorers and LLM judges* — <https://docs.databricks.com/aws/en/mlflow3/genai/eval-monitor/concepts/scorers>
-
-RAG de ponta a ponta: um tutorial prático · compilado em 2026-09-23. Os dados marcados com † não foram reverificados na documentação oficial nessa data; os recursos marcados com (preview) não estão em disponibilidade geral.
