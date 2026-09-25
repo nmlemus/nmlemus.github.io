@@ -4,6 +4,7 @@ import Prompt from '../../components/Prompt.astro';
 import { langParams } from '../../i18n/paths.ts';
 import { t } from '../../i18n/ui.ts';
 import type { Lang } from '../../i18n/langs.ts';
+import Flag from '../../components/Flag.astro';
 import { bio, history, education, links } from '../../data/profile.ts';
 import { person } from '../../lib/jsonld.ts';
 
@@ -30,11 +31,11 @@ const { lang } = Astro.props as { lang: Lang };
     <div class="pane">
       <Prompt dir="~" bar={false}>
         <Fragment slot="cmd">git log <span class="arg">--pretty='%ad %s' --date=short</span></Fragment>
-        <ul class="log">{history.map((i) => <li><span class="when">{i.when}</span> {i.what[lang]}</li>)}</ul>
+        <ul class="log">{history.map((i) => <li><span class="when">{i.when}</span><span class="what"><Flag code={i.country} lang={lang} /><span>{i.what[lang]}</span></span></li>)}</ul>
       </Prompt>
       <Prompt dir="~" bar={false}>
         <Fragment slot="cmd">ls <span class="arg">education/</span></Fragment>
-        <ul class="log">{education.map((i) => <li><span class="when">{i.when}</span> {i.what[lang]}</li>)}</ul>
+        <ul class="log">{education.map((i) => <li><span class="when">{i.when}</span><span class="what"><Flag code={i.country} lang={lang} /><span>{i.what[lang]}</span></span></li>)}</ul>
       </Prompt>
     </div>
   </div>
@@ -46,6 +47,9 @@ const { lang } = Astro.props as { lang: Lang };
   .log { list-style: none; margin: 0; padding: 0; }
   .log li { display: grid; grid-template-columns: 11ch minmax(0, 1fr); column-gap: 2ch; padding: 3px 0; overflow-wrap: anywhere; }
   .when { color: var(--key); }
+  /* Wrapped lines align with the text, not under the flag. */
+  .what { display: flex; align-items: flex-start; }
+  .what :global(.flag) { margin-top: .38em; }
   :global(:root[data-mode='reader']) .panes { display: block; max-width: 700px; margin: 0 auto; }
   :global(:root[data-mode='reader']) .log li { font-family: var(--serif); font-size: 17px; }
 </style>
