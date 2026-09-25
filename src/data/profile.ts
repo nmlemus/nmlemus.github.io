@@ -44,8 +44,7 @@ export const history: LogItem[] = [
 export const education: LogItem[] = [
   { when: '2013–2018', what: { en: 'PhD, Computational Modeling @ LNCC. Thesis: Generalized lambda distribution for uncertainty quantification of large-scale spatio-temporal models', es: 'Doctorado en Modelación Computacional @ LNCC. Tesis: Generalized lambda distribution for uncertainty quantification of large-scale spatio-temporal models', pt: 'Doutorado em Modelagem Computacional @ LNCC. Tese: Generalized lambda distribution for uncertainty quantification of large-scale spatio-temporal models' }, country: 'br' },
   { when: '2005–2007', what: { en: 'MSc, Bioinformatics @ InsTEC', es: 'Maestría en Bioinformática @ InsTEC', pt: 'Mestrado em Bioinformática @ InsTEC' }, country: 'cu' },
-  // TODO: replace with real years (author to confirm) — left empty rather than guessed.
-  { when: '', what: { en: 'BSc, Radiochemistry @ ISCTN, Havana', es: 'Licenciatura en Radioquímica @ ISCTN, La Habana', pt: 'Graduação em Radioquímica @ ISCTN, Havana' }, country: 'cu' },
+  { when: '1997–2002', what: { en: 'BSc, Radiochemistry @ ISCTN, Havana', es: 'Licenciatura en Radioquímica @ ISCTN, La Habana', pt: 'Graduação em Radioquímica @ ISCTN, Havana' }, country: 'cu' },
 ];
 
 export interface SpokenLanguage {
