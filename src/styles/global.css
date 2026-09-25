@@ -36,15 +36,17 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 400 14.5px/1.6 var(--mono); }
+body { margin: 0; background: var(--bg); color: var(--text); font: 400 14.5px/1.6 var(--mono); min-height: 100vh; display: flex; flex-direction: column; }
+main { flex: 1 0 auto; width: 100%; }
 a { color: var(--link); text-decoration: none; }
 a:hover { text-decoration: underline; }
 :focus-visible { outline: 2px solid var(--p10k-dir); outline-offset: 2px; }
 .skip { position: absolute; left: -9999px; }
 .skip:focus { left: 8px; top: 8px; background: var(--strong); color: var(--bg); padding: 4px 8px; z-index: 10; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.term { max-width: 92ch; padding: 22px 26px 48px; }
-@media (max-width: 600px) { .term { padding: 16px 16px 40px; } }
+/* One centered frame for every page; pages lay out panes inside it. */
+.term { max-width: 1240px; margin: 0 auto; padding: 22px 32px 0; }
+@media (max-width: 600px) { .term { padding: 16px 16px 0; } }
 h1, h2, h3 { margin: 0; }
 p { margin: 0; }
 .arg { color: var(--accent); }
@@ -55,10 +57,11 @@ p { margin: 0; }
 
 /* ---------- rendered markdown ---------- */
 .md { margin-top: 18px; }
-.md > h1 { font: 700 22px/1.35 var(--mono); color: var(--heading); margin-bottom: 6px; }
-.md .hash { color: var(--muted); font-weight: 400; }
-.md .lede { font: italic 400 19px/1.5 var(--serif); color: var(--text); margin-bottom: 18px; }
-.md .byline { display: none; }
+.md > :first-child { margin-top: 0; }
+.post-title { font: 700 26px/1.3 var(--mono); color: var(--heading); margin-bottom: 8px; }
+.hash { color: var(--muted); font-weight: 400; }
+.lede { font: italic 400 19px/1.5 var(--serif); color: var(--text); margin-bottom: 18px; max-width: 70ch; }
+.byline { display: none; }
 .md h2 { font: 700 17px/1.4 var(--mono); color: var(--heading); margin: 30px 0 10px; }
 .md h2::before { content: '## '; color: var(--muted); font-weight: 400; }
 .md h3 { font: 700 15px/1.4 var(--mono); color: var(--strong); margin: 24px 0 8px; }
@@ -97,20 +100,21 @@ p { margin: 0; }
 
 /* ---------- reader mode ---------- */
 :root[data-mode='reader'] body { font-family: var(--serif); }
-:root[data-mode='reader'] .term { max-width: 36em; margin: 0 auto; padding: 48px 24px 64px; }
+:root[data-mode='reader'] .term { padding-top: 48px; }
+/* Reader: one ~68-character column for prose, centered. */
+:root[data-mode='reader'] .md, :root[data-mode='reader'] .reading { max-width: 700px; margin-left: auto; margin-right: auto; }
 :root[data-mode='reader'] .reader-hide { display: none !important; }
-:root[data-mode='reader'] .md > h1 { font: 600 34px/1.2 var(--serif); text-align: center; margin-bottom: 10px; }
-:root[data-mode='reader'] .md .hash { display: none; }
-:root[data-mode='reader'] .md .lede { text-align: center; margin-bottom: 14px; }
-:root[data-mode='reader'] .md .byline { display: block; font: 14px/1.5 var(--serif); color: var(--muted); text-align: center; margin-bottom: 30px; }
+:root[data-mode='reader'] .post-title { font: 600 38px/1.2 var(--serif); color: var(--heading); margin-bottom: 12px; }
+:root[data-mode='reader'] .hash { display: none; }
+:root[data-mode='reader'] .lede { font-size: 21px; margin-bottom: 14px; }
+:root[data-mode='reader'] .byline { display: block; font: 15px/1.5 var(--serif); color: var(--muted); margin-bottom: 34px; }
 :root[data-mode='reader'] .md h2 { font: 600 24px/1.3 var(--serif); }
 :root[data-mode='reader'] .md h3 { font: 600 20px/1.3 var(--serif); }
 :root[data-mode='reader'] .md h2::before, :root[data-mode='reader'] .md h3::before { content: none; }
-:root[data-mode='reader'] .md p { font-size: 19.5px; line-height: 1.75; text-align: justify; hyphens: auto; max-width: none; }
-:root[data-mode='reader'] .md p + p { text-indent: 1.4em; }
+:root[data-mode='reader'] .md p { font-size: 19.5px; line-height: 1.75; max-width: none; }
 :root[data-mode='reader'] .md li { font-size: 19px; }
-:root[data-mode='reader'] .md blockquote { text-align: center; margin: 18px 1em 26px; }
-:root[data-mode='reader'] .md blockquote p { font-size: 22px; text-align: center; }
+:root[data-mode='reader'] .md blockquote { margin: 18px 0 26px; padding-left: 20px; border-left: 3px solid var(--line); }
+:root[data-mode='reader'] .md blockquote p { font-size: 21px; }
 :root[data-mode='reader'] .md blockquote p:first-child::before { content: none; }
 :root[data-mode='reader'] .md table { font-family: var(--serif); font-size: 15.5px; margin: 8px auto 18px; border-top: 1.5px solid var(--text); border-bottom: 1.5px solid var(--text); width: fit-content; }
 :root[data-mode='reader'] .md th, :root[data-mode='reader'] .md td { border: 0; }

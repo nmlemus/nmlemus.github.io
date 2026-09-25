@@ -2,31 +2,34 @@
 interface Props {
   dir: string;
   status?: 'ok' | 'error';
+  /** false = only the `❯ command` line (for follow-up sections under one prompt bar). */
+  bar?: boolean;
 }
-const { dir, status = 'ok' } = Astro.props;
-const time = new Date().toISOString().slice(11, 19);
+const { dir, status = 'ok', bar = true } = Astro.props;
 const statusColor = status === 'ok' ? 'var(--p10k-ok)' : 'var(--p10k-err)';
 ---
-<section class="prompt">
-  <div class="l1" aria-hidden="true">
-    <span class="frame">╭─</span><span class="seg os">&#xF179;</span><span class="sep" style="color:var(--p10k-os);background:var(--p10k-dir)">&#xE0B0;</span><span class="seg dir">{dir}</span><span class="sep" style="color:var(--p10k-dir);background:var(--p10k-ok)">&#xE0B0;</span><span class="seg vcs">&#xE0A0; main</span><span class="sep" style="color:var(--p10k-ok)">&#xE0B0;</span><span class="gap"></span><span class="right"><span class="sep" style={`color:${statusColor}`}>&#xE0B2;</span><span class="seg" style={`background:${statusColor};color:${status === 'ok' ? '#000' : '#fff'}`}>{status === 'ok' ? '✔' : '✘ 1'}</span><span class="sep" style={`color:var(--p10k-time);background:${statusColor}`}>&#xE0B2;</span><span class="seg time">{time}</span><span class="frame">─╮</span></span>
-  </div>
-  <div class="l2"><span class="frame" aria-hidden="true">╰─</span><span class="char" aria-hidden="true">❯</span><span class="cmd"><slot name="cmd" /></span></div>
+<section class:list={['prompt', { follow: !bar }]}>
+  {bar && (
+    <div class="l1" aria-hidden="true">
+      <span class="frame">╭─</span><span class="seg os">&#xF179;</span><span class="sep" style="color:var(--p10k-os);background:var(--p10k-dir)">&#xE0B0;</span><span class="seg dir">{dir}</span><span class="sep" style="color:var(--p10k-dir);background:var(--p10k-ok)">&#xE0B0;</span><span class="seg vcs">&#xE0A0; main</span><span class="sep" style="color:var(--p10k-ok)">&#xE0B0;</span><span class="gap"></span><span class="right"><span class="sep" style={`color:${statusColor}`}>&#xE0B2;</span><span class="seg" style={`background:${statusColor};color:${status === 'ok' ? '#000' : '#fff'}`}>{status === 'ok' ? '✔' : '✘ 1'}</span><span class="frame">─╮</span></span>
+    </div>
+  )}
+  <div class="l2"><span class="frame" aria-hidden="true">{bar ? '╰─' : ''}</span><span class="char" aria-hidden="true">❯</span><span class="cmd"><slot name="cmd" /></span></div>
   <div class="out"><slot /></div>
 </section>
 <style>
   .prompt { margin-top: 26px; }
-  .prompt:first-child { margin-top: 0; }
+  .prompt:first-of-type { margin-top: 0; }
   .l1 { display: flex; align-items: center; white-space: nowrap; line-height: 1.55; }
   .frame { color: var(--p10k-frame); }
   .seg { padding: 0 8px; }
   .os { background: var(--p10k-os); color: #fff; }
   .dir { background: var(--p10k-dir); color: #fff; font-weight: 700; }
   .vcs { background: var(--p10k-ok); color: #000; }
-  .time { background: var(--p10k-time); color: #eee; }
   .gap { flex: 1; min-width: 12px; margin: 0 6px; border-bottom: 2px dotted var(--p10k-frame); height: .55em; }
   .right { display: flex; align-items: center; }
   .l2 { display: flex; flex-wrap: wrap; }
+  .follow .l2 .char { margin-left: 0; }
   .char { color: var(--p10k-char); margin: 0 8px 0 2px; }
   .cmd { color: var(--strong); overflow-wrap: anywhere; }
   .out { margin-top: 10px; }
@@ -35,4 +38,5 @@ const statusColor = status === 'ok' ? 'var(--p10k-ok)' : 'var(--p10k-err)';
   :global(:root[data-mode='reader']) .l2:has(:global(.copy)) { display: flex; justify-content: center; }
   :global(:root[data-mode='reader']) .l2 .frame, :global(:root[data-mode='reader']) .l2 .char { display: none; }
   :global(:root[data-mode='reader']) .prompt { margin-top: 36px; }
+  :global(:root[data-mode='reader']) .prompt:first-of-type { margin-top: 0; }
 </style>

@@ -16,10 +16,12 @@ const { lang, posts } = Astro.props;
 {posts.length > 0 && (
   <ol class="ls">
     {posts.map(({ slug, entry }) => (
-      <li class="row">
-        <span class="d">{isoDate(entry.data.date)}</span>
-        <span class="m">{readingMinutes(entry.body ?? '')}{t(lang, 'post.minutes')}</span>
-        <span class="f" aria-hidden="true">{slug}.md</span>
+      <li class="card">
+        <p class="meta">
+          <span>{isoDate(entry.data.date)}</span>
+          <span>{readingMinutes(entry.body ?? '')} {t(lang, 'post.minutes')}</span>
+          <span class="f reader-hide" aria-hidden="true">{slug}.md</span>
+        </p>
         <h2 class="title"><a href={localePath(lang, `blog/${slug}/`)}>{entry.data.title}</a></h2>
         <p class="desc">{entry.data.description}</p>
         <p class="tags">{entry.data.tags.map((tag) => <a href={localePath(lang, `blog/tags/${tag}/`)}>#{tag}</a>)}</p>
@@ -28,25 +30,25 @@ const { lang, posts } = Astro.props;
   </ol>
 )}
 <style>
-  .ls { list-style: none; margin: 10px 0 0; padding: 0; }
-  .row { display: grid; grid-template-columns: 11ch 4ch minmax(0, 1fr); column-gap: 2ch; padding: 10px 0; border-bottom: 1px dashed var(--line); }
-  .row:last-child { border-bottom: 0; }
-  .d, .m { color: var(--muted); }
-  .f { color: var(--link); font-weight: 700; overflow-wrap: anywhere; }
-  .title, .desc, .tags { grid-column: 3; }
-  .title { font: 400 14.5px/1.5 var(--mono); margin-top: 2px; }
+  /* 2+ columns where there is room (writing index), 1 inside the home pane or on phones. */
+  .ls { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr)); }
+  .card { position: relative; padding: 14px 16px; border: 1px solid var(--line); border-left: 2px solid var(--line); transition: border-color .15s, background-color .15s; }
+  .card:hover, .card:focus-within { border-left-color: var(--p10k-char); background: var(--bg-2); }
+  .meta { display: flex; flex-wrap: wrap; gap: 0 2ch; color: var(--muted); font-size: 13px; }
+  .f { overflow-wrap: anywhere; }
+  .title { font: 700 17px/1.4 var(--mono); margin: 4px 0 6px; }
   .title a { color: var(--strong); }
-  .desc { font: 400 15.5px/1.5 var(--serif); color: var(--prose); }
-  .tags { font-size: 13px; margin-top: 3px; display: flex; gap: 1ch; flex-wrap: wrap; }
-  .tags a { color: var(--quote); }
+  /* The whole card is the link target; tags stay independently clickable above it. */
+  .title a::after { content: ''; position: absolute; inset: 0; }
+  .title a:hover { text-decoration: none; }
+  .card:hover .title a { color: var(--link); }
+  .desc { font: 400 16px/1.55 var(--serif); color: var(--prose); max-width: 72ch; }
+  .tags { font-size: 13px; margin-top: 6px; display: flex; gap: 1.5ch; flex-wrap: wrap; }
+  .tags a { color: var(--quote); position: relative; z-index: 1; }
   .empty { color: var(--muted); }
-  @media (max-width: 600px) {
-    .row { grid-template-columns: 11ch minmax(0, 1fr); }
-    .m { display: none; }
-    .f, .title, .desc, .tags { grid-column: 1 / -1; }
-  }
-  :global(:root[data-mode='reader']) .row { display: block; padding: 18px 0; }
-  :global(:root[data-mode='reader']) .m, :global(:root[data-mode='reader']) .f { display: none; }
-  :global(:root[data-mode='reader']) .title { font: 600 21px/1.3 var(--serif); }
+  :global(:root[data-mode='reader']) .ls { display: block; max-width: 700px; margin: 0 auto; }
+  :global(:root[data-mode='reader']) .card { border: 0; border-bottom: 1px solid var(--line); padding: 18px 0; background: none; }
+  :global(:root[data-mode='reader']) .title { font: 600 22px/1.3 var(--serif); }
+  :global(:root[data-mode='reader']) .meta { font-family: var(--serif); font-size: 14px; }
   :global(:root[data-mode='reader']) .desc { font-size: 17px; }
 </style>

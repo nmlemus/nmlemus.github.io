@@ -17,10 +17,9 @@ const { lang } = Astro.props as { lang: Lang };
     <Fragment slot="cmd">ls -l <span class="arg">projects/</span></Fragment>
     <ul class="projects">
       {projects.map((p) => (
-        <li>
-          <span class="period">{p.period}</span>
+        <li class="card">
+          <p class="meta"><span>{p.period}</span><span>{p.kind[lang]}</span></p>
           <h2 class="name">{p.url ? <a href={p.url}>{p.name}/</a> : `${p.name}/`}</h2>
-          <span class="kind">{p.kind[lang]}</span>
           <p class="desc">{p.description[lang]}</p>
         </li>
       ))}
@@ -28,13 +27,15 @@ const { lang } = Astro.props as { lang: Lang };
   </Prompt>
 </BaseLayout>
 <style>
-  .projects { list-style: none; margin: 0; padding: 0; }
-  .projects li { display: grid; grid-template-columns: 11ch minmax(0, 1fr); column-gap: 2ch; padding: 12px 0; border-bottom: 1px dashed var(--line); }
-  .period { color: var(--muted); }
-  .name { font: 700 14.5px/1.5 var(--mono); color: var(--link); }
-  .kind, .desc { grid-column: 2; }
-  .kind { color: var(--quote); font-size: 13px; }
-  .desc { font: 400 15.5px/1.55 var(--serif); color: var(--prose); margin-top: 4px; }
-  @media (max-width: 600px) { .projects li { grid-template-columns: 1fr; } .kind, .desc { grid-column: 1; } }
-  :global(:root[data-mode='reader']) .name { font: 600 20px/1.3 var(--serif); }
+  .projects { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr)); }
+  .card { padding: 14px 16px; border: 1px solid var(--line); border-left: 2px solid var(--line); }
+  .card:has(a):hover { border-left-color: var(--p10k-char); background: var(--bg-2); }
+  .meta { display: flex; flex-wrap: wrap; gap: 0 2ch; color: var(--muted); font-size: 13px; }
+  .meta span + span { color: var(--quote); }
+  .name { font: 700 17px/1.4 var(--mono); color: var(--strong); margin: 4px 0 6px; }
+  .desc { font: 400 16px/1.55 var(--serif); color: var(--prose); }
+  :global(:root[data-mode='reader']) .projects { display: block; max-width: 700px; margin: 0 auto; }
+  :global(:root[data-mode='reader']) .card { border: 0; border-bottom: 1px solid var(--line); padding: 18px 0; background: none; }
+  :global(:root[data-mode='reader']) .name { font: 600 21px/1.3 var(--serif); }
+  :global(:root[data-mode='reader']) .meta { font-family: var(--serif); font-size: 14px; }
 </style>

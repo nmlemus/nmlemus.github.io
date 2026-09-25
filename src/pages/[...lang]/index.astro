@@ -7,35 +7,62 @@ import { t } from '../../i18n/ui.ts';
 import type { Lang } from '../../i18n/langs.ts';
 import { getPosts } from '../../lib/posts.ts';
 import { person } from '../../lib/jsonld.ts';
+import { links } from '../../data/profile.ts';
 
 export function getStaticPaths() {
   return langParams();
 }
 const { lang } = Astro.props as { lang: Lang };
 const posts = (await getPosts(lang)).slice(0, 5);
+const highlights = t(lang, 'home.role').split(' | ');
 ---
 <BaseLayout lang={lang} path="" section="home" title={t(lang, 'meta.homeTitle')} description={t(lang, 'meta.homeDescription')} jsonLd={person(Astro.site!)}>
   <Prompt dir="~">
-    <Fragment slot="cmd">whoami</Fragment>
-    <h1 class="name">Noel Moreno Lemus</h1>
-    <p class="role">{t(lang, 'home.role')}</p>
-    <p class="bio">{t(lang, 'home.bio')}</p>
-    <p class="now"># {t(lang, 'home.now')}: <a href="https://github.com/nmlemus/dsagent">dsagent</a>, {t(lang, 'home.nowText')}</p>
+    <Fragment slot="cmd">tmux split-window <span class="arg">-h</span></Fragment>
   </Prompt>
-  <Prompt dir="~">
-    <Fragment slot="cmd">ls -t <span class="arg">writing/</span></Fragment>
-    <PostList lang={lang} posts={posts} />
-    <p class="total"><a href={localePath(lang, 'blog/')}>{t(lang, 'home.allPosts')}</a> · <a href={localePath(lang, 'rss.xml')}>rss.xml</a></p>
-  </Prompt>
-  <div class="reader-hide idle">
-    <Prompt dir="~"><Fragment slot="cmd"><span class="cursor"></span></Fragment></Prompt>
+  <div class="panes">
+    <section class="pane profile" aria-labelledby="whoami">
+      <p class="pane-title reader-hide" aria-hidden="true">─ whoami ─</p>
+      <h1 class="name" id="whoami">Noel Moreno Lemus</h1>
+      <p class="role">{highlights.map((h) => <span>{h}</span>)}</p>
+      <p class="bio">{t(lang, 'home.bio')}</p>
+      <p class="now"># {t(lang, 'home.now')}: <a href="https://github.com/nmlemus/dsagent">dsagent</a>, {t(lang, 'home.nowText')}</p>
+      <ul class="links">
+        {links.map((l) => <li><a href={l.href} rel="me">{l.label}</a></li>)}
+        <li><a href={localePath(lang, 'rss.xml')}>rss</a></li>
+      </ul>
+    </section>
+    <section class="pane writing" aria-labelledby="latest">
+      <p class="pane-title reader-hide" aria-hidden="true">─ ls -t writing/ ─</p>
+      <h2 class="sr-only" id="latest">{t(lang, 'meta.blogTitle')}</h2>
+      <PostList lang={lang} posts={posts} />
+      <p class="total"><a href={localePath(lang, 'blog/')}>{t(lang, 'home.allPosts')} →</a></p>
+    </section>
   </div>
 </BaseLayout>
 <style>
-  .name { font: 700 17px/1.4 var(--mono); color: var(--strong); }
-  .role { color: var(--accent); }
-  .bio { font: 400 16.5px/1.6 var(--serif); color: var(--prose); margin-top: 8px; max-width: 70ch; }
-  .now { color: var(--muted); margin-top: 8px; }
-  .idle { margin-top: 26px; }
-  :global(:root[data-mode='reader']) .name { font: 600 30px/1.2 var(--serif); }
+  .panes { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); margin-top: 14px; border: 1px solid var(--line); }
+  .pane { padding: 18px 24px 24px; min-width: 0; }
+  .writing { border-left: 1px solid var(--line); }
+  .pane-title { color: var(--muted); font-size: 12.5px; margin: -6px 0 14px; }
+  .name { font: 700 26px/1.25 var(--mono); color: var(--strong); }
+  .role { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; color: var(--accent); font-size: 13.5px; }
+  .role span::before { content: '▸ '; color: var(--muted); }
+  .bio { font: 400 16px/1.6 var(--serif); color: var(--prose); margin-top: 16px; }
+  .now { color: var(--muted); margin-top: 14px; font-size: 13.5px; }
+  .links { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 0; margin: 16px 0 0; }
+  .links a { text-decoration: underline; text-underline-offset: 3px; }
+  @media (min-width: 900px) { .profile { align-self: start; position: sticky; top: 16px; } }
+  @media (max-width: 899px) {
+    .panes { grid-template-columns: 1fr; }
+    .writing { border-left: 0; border-top: 1px solid var(--line); }
+  }
+  @media (max-width: 600px) { .pane { padding: 16px; } }
+  :global(:root[data-mode='reader']) .panes { border: 0; gap: 48px; }
+  :global(:root[data-mode='reader']) .pane { padding: 0; }
+  :global(:root[data-mode='reader']) .writing { border: 0; }
+  :global(:root[data-mode='reader']) .name { font: 600 32px/1.2 var(--serif); }
+  :global(:root[data-mode='reader']) .role { font-family: var(--serif); font-size: 15px; color: var(--text); }
+  :global(:root[data-mode='reader']) .role span::before { content: ''; }
+  :global(:root[data-mode='reader']) .now { font-family: var(--serif); }
 </style>

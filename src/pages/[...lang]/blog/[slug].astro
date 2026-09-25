@@ -34,25 +34,31 @@ const share = {
 ---
 <BaseLayout lang={lang} path={path} section="writing" type="article" title={`${title} — Noel Moreno Lemus`} description={description} ogImage={ogImage}
   jsonLd={blogPosting({ site: Astro.site!, url, title, description, date, updated, lang: HTML_LANG[lang], image: new URL(ogImage, Astro.site).href })}>
+  <div class="post-wrap">
   <Prompt dir="~/writing">
     <Fragment slot="cmd">cat <span class="arg">{slug}.md</span></Fragment>
-    <Frontmatter lang={lang} slug={slug} title={title} date={date} minutes={minutes} tags={tags} />
-    <article class="md">
-      <h1><span class="hash" aria-hidden="true"># </span>{title}</h1>
+  </Prompt>
+  <div class="post">
+    <header class="post-head reading">
+      <h1 class="post-title"><span class="hash" aria-hidden="true"># </span>{title}</h1>
       <p class="lede">{description}</p>
       <p class="byline">Noel Moreno Lemus · <time datetime={date.toISOString()}>{longDate(date, lang)}</time> · {minutes} {t(lang, 'post.readTime')}</p>
+    </header>
+    <aside class="side">
+      <Frontmatter lang={lang} slug={slug} date={date} minutes={minutes} tags={tags} />
       {toc.length >= 3 && (
-        <nav class="toc reader-hide" aria-label={t(lang, 'post.toc')}>
-          <span class="cmdline" aria-hidden="true">$ grep '^## ' {slug}.md</span>
-          {toc.map((h) => <a href={`#${h.slug}`}>## {h.text}</a>)}
+        <nav class="toc" aria-label={t(lang, 'post.toc')}>
+          <span class="cmdline reader-hide" aria-hidden="true">$ grep '^## ' {slug}.md</span>
+          {toc.map((h) => <a href={`#${h.slug}`}><span class="reader-hide" aria-hidden="true">## </span>{h.text}</a>)}
         </nav>
       )}
-      <Content />
-    </article>
-  </Prompt>
-  <Prompt dir="~/writing">
+    </aside>
+    <article class="md post-body"><Content /></article>
+  </div>
+  <Prompt dir="~/writing" bar={false}>
     <Fragment slot="cmd">share <a href={share.linkedin} rel="noopener" target="_blank">--linkedin</a> <a href={share.x} rel="noopener" target="_blank">--x</a> <button type="button" class="copy" data-copy={url}>--copy-link</button></Fragment>
   </Prompt>
+  </div>
 </BaseLayout>
 <script>
   document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((button) => {
@@ -67,9 +73,29 @@ const share = {
   });
 </script>
 <style>
-  .toc { display: flex; flex-direction: column; margin: 0 0 22px; font-size: 13.5px; }
+  /* Terminal: text column + sidebar as one centered block, aligned with its prompt. */
+  .post-wrap { max-width: 1060px; margin: 0 auto; }
+  :global(:root[data-mode='reader']) .post-wrap { max-width: none; }
+  .post { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'head' 'side' 'body'; margin-top: 18px; }
+  .post-head { grid-area: head; }
+  .side { grid-area: side; margin-bottom: 26px; font-size: 13.5px; }
+  .post-body { grid-area: body; margin-top: 0; }
+  .toc { display: flex; flex-direction: column; margin-top: 18px; }
   .toc a { padding: 3px 0; min-height: 24px; }
   .cmdline { color: var(--muted); }
   .copy { font: inherit; background: none; border: 0; padding: 0; color: var(--link); cursor: pointer; }
+  @media (min-width: 1080px) {
+    .post { grid-template-columns: minmax(0, 700px) 280px; grid-template-areas: 'head side' 'body side'; column-gap: 56px; justify-content: space-between; }
+    .side { position: sticky; top: 16px; align-self: start; padding-left: 20px; border-left: 1px solid var(--line); }
+  }
+  /* Reader: centered column; on wide screens the contents float in the left margin. */
+  :global(:root[data-mode='reader']) .post { display: block; }
+  :global(:root[data-mode='reader']) .side { max-width: 700px; margin: 0 auto 30px; }
+  :global(:root[data-mode='reader']) .toc a { font-family: var(--serif); font-size: 15px; }
+  @media (min-width: 1280px) {
+    :global(:root[data-mode='reader']) .post { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 700px) minmax(0, 1fr); grid-template-areas: '. head .' 'side body .'; column-gap: 48px; }
+    :global(:root[data-mode='reader']) .side { margin: 0; position: sticky; top: 24px; align-self: start; justify-self: end; max-width: 240px; }
+    :global(:root[data-mode='reader']) .toc { margin-top: 0; border-left: 1px solid var(--line); padding-left: 14px; }
+  }
   :global(:root[data-mode='reader']) .copy { font-family: var(--serif); }
 </style>
