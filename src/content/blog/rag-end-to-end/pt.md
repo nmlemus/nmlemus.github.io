@@ -5,7 +5,7 @@ date: 2026-09-25
 tags: [rag, retrieval, evaluation]
 ---
 
-Conectar um banco vetorial é a parte fácil do RAG. Se ele funciona ou não depende de ler bem os documentos, fazer busca híbrida, aplicar reranking e medir a recuperação e as respostas separadamente.
+> **Ideia-chave:** O valor do RAG não está em "plugar um vector store": está em **ler bem os documentos**, **buscar de forma híbrida**, **fazer reranking** e, acima de tudo, **medir** a recuperação e as respostas separadamente.
 
 Nos testes da Anthropic (2024), adicionar contexto aos chunks, BM25 e um reranker reduziu as falhas de recuperação em 67%. Ferramentas comerciais de RAG jurídico alucinam em 17–33% dos casos (Stanford, 2024), e no benchmark CRAG da Meta (2024) os melhores sistemas de RAG industriais só respondem sem alucinar em 63% das vezes. Para medir tudo isso, um juiz LLM concorda com humanos em mais de 80% das vezes (Zheng et al., 2023).
 
@@ -19,6 +19,8 @@ Conferi quase tudo o que está aqui na documentação oficial e nos artigos cita
 
 Por que você precisa disso? Um modelo de linguagem não conhece os documentos internos da sua empresa, o conhecimento dele para numa data de corte e ele pode inventar coisas ("alucinar"). Com RAG, a resposta se apoia em documentos específicos que qualquer pessoa pode conferir, e atualizar o conhecimento não exige retreinar o modelo.
 
+
+O jeito mais fácil de ver como as peças se encaixam é pensar em uma biblioteca e em alguém que chega ao balcão com uma pergunta:
 
 <figure class="diagram"><div class="diagram-scroll"><svg style="min-width:965px" viewBox="0 0 1440 320"  xmlns="http://www.w3.org/2000/svg" role="img"
          aria-labelledby="rag-library-title rag-library-desc">
@@ -112,6 +114,16 @@ Por que você precisa disso? Um modelo de linguagem não conhece os documentos i
       <line x1="720" y1="298" x2="744" y2="298" stroke="#003da5" stroke-width="1" marker-end="url(#arrow)"/>
       <text x="752" y="301" font-family="Meslo, Menlo, monospace" font-size="8" fill="#4d6fa8">Passagem de dados entre etapas</text>
     </svg></div><figcaption>RAG como uma biblioteca: documentos → chunks → índice → busca → reranker → modelo → avaliação</figcaption></figure>
+
+1. A **biblioteca** são os seus documentos: tudo de onde o sistema pode tirar respostas, como PDFs, wikis ou políticas internas.
+2. As **fichas** são os chunks. Ninguém relê um livro inteiro a cada pergunta, então cada documento é cortado em fichas pequenas, cada uma com um pedaço de informação que se entende sozinho.
+3. O **catálogo** é o índice. Cada ficha é arquivada de duas formas: pelas palavras que contém e pelo que significa. É isso que depois permite buscar tanto por palavra-chave quanto por significado.
+4. O **bibliotecário** é a busca. Quando chega uma pergunta, ele traz rapidamente umas 50 fichas que parecem relevantes, sem lê-las com atenção.
+5. O **especialista** é o reranker. Ele lê a pergunta ao lado de cada uma dessas fichas e fica com as 5 melhores.
+6. O **redator** é o modelo de linguagem. Só agora alguém escreve a resposta, usando essas 5 fichas e citando a ficha de onde sai cada frase. Se as fichas não têm a resposta, o honesto é dizer "não sei".
+7. O **professor** é a avaliação. Ele avalia duas coisas separadamente: se o bibliotecário trouxe as fichas certas e se a resposta é fiel a elas.
+
+O resto do tutorial segue a mesma ordem: preparar os documentos (etapas 1 a 3), busca (4), reranking (5), geração (6) e avaliação (7).
 
 
 Gao et al. (2023/24) descrevem a evolução da área em três estágios:
