@@ -1,0 +1,41 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Prompt from '../../components/Prompt.astro';
+import PostList from '../../components/PostList.astro';
+import { langParams, localePath } from '../../i18n/paths.ts';
+import { t } from '../../i18n/ui.ts';
+import type { Lang } from '../../i18n/langs.ts';
+import { getPosts } from '../../lib/posts.ts';
+import { person } from '../../lib/jsonld.ts';
+
+export function getStaticPaths() {
+  return langParams();
+}
+const { lang } = Astro.props as { lang: Lang };
+const posts = (await getPosts(lang)).slice(0, 5);
+---
+<BaseLayout lang={lang} path="" section="home" title={t(lang, 'meta.homeTitle')} description={t(lang, 'meta.homeDescription')} jsonLd={person(Astro.site!)}>
+  <Prompt dir="~">
+    <Fragment slot="cmd">whoami</Fragment>
+    <h1 class="name">Noel Moreno Lemus</h1>
+    <p class="role">{t(lang, 'home.role')}</p>
+    <p class="bio">{t(lang, 'home.bio')}</p>
+    <p class="now"># {t(lang, 'home.now')}: <a href="https://github.com/nmlemus/dsagent">dsagent</a>, {t(lang, 'home.nowText')}</p>
+  </Prompt>
+  <Prompt dir="~">
+    <Fragment slot="cmd">ls -t <span class="arg">writing/</span></Fragment>
+    <PostList lang={lang} posts={posts} />
+    <p class="total"><a href={localePath(lang, 'blog/')}>{t(lang, 'home.allPosts')}</a> · <a href={localePath(lang, 'rss.xml')}>rss.xml</a></p>
+  </Prompt>
+  <div class="reader-hide idle">
+    <Prompt dir="~"><Fragment slot="cmd"><span class="cursor"></span></Fragment></Prompt>
+  </div>
+</BaseLayout>
+<style>
+  .name { font: 700 17px/1.4 var(--mono); color: var(--strong); }
+  .role { color: var(--accent); }
+  .bio { font: 400 16.5px/1.6 var(--serif); color: var(--prose); margin-top: 8px; max-width: 70ch; }
+  .now { color: var(--muted); margin-top: 8px; }
+  .idle { margin-top: 26px; }
+  :global(:root[data-mode='reader']) .name { font: 600 30px/1.2 var(--serif); }
+</style>
