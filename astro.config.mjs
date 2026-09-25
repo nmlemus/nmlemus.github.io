@@ -6,6 +6,8 @@ import rehypeKatex from 'rehype-katex';
 
 export default defineConfig({
   site: 'https://nmlemus.github.io',
+  // Inline all CSS: removes render-blocking requests (KaTeX CSS is ~23 KB); first visit matters most for a blog.
+  build: { inlineStylesheets: 'always' },
   integrations: [
     sitemap({ i18n: { defaultLocale: 'en', locales: { en: 'en', es: 'es', pt: 'pt-BR' } } }),
   ],

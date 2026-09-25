@@ -68,6 +68,7 @@ p { margin: 0; }
 .md ul, .md ol { margin: 0 0 16px; padding-left: 1.4em; max-width: 68ch; }
 .md li { margin-bottom: 6px; }
 .md strong { color: var(--strong); font-weight: 600; }
+.md p a, .md li a { text-decoration: underline; text-underline-offset: 3px; }
 .md blockquote { margin: 4px 0 18px; padding: 0; max-width: 66ch; }
 .md blockquote p { font: italic 400 20px/1.45 var(--serif); color: var(--quote); }
 .md blockquote p:first-child::before { content: '> '; font: normal 14.5px var(--mono); color: var(--muted); }
