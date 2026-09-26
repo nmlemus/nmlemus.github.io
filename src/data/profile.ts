@@ -3,12 +3,13 @@ import type { FlagCode } from '../lib/flags.ts';
 
 export type Localized = Record<Lang, string>;
 export interface LogItem {
-  when: string;
+  when: string | Localized;
   what: Localized;
   country: FlagCode;
 }
 
 // Every fact here comes from the author's LinkedIn profile (snapshot 2026-09-24).
+// Role years are LinkedIn's start–end months (e.g. Sep 2003 – Aug 2012), shown as years.
 // Author's own profile text (provided 2026-09-25); ES/PT translated.
 export const bio: Record<Lang, string[]> = {
   en: [
@@ -32,13 +33,13 @@ export const bio: Record<Lang, string[]> = {
 };
 
 export const history: LogItem[] = [
-  { when: '2022-05', what: { en: 'Senior Data Scientist @ Procter & Gamble, Panama', es: 'Senior Data Scientist @ Procter & Gamble, Panamá', pt: 'Senior Data Scientist @ Procter & Gamble, Panamá' }, country: 'pa' },
-  { when: '2019-09', what: { en: 'Data Scientist @ Procter & Gamble', es: 'Data Scientist @ Procter & Gamble', pt: 'Data Scientist @ Procter & Gamble' }, country: 'pa' },
-  { when: '2018-08', what: { en: 'Postdoctoral Researcher @ Universidade Federal Fluminense, Rio de Janeiro', es: 'Investigador posdoctoral @ Universidade Federal Fluminense, Río de Janeiro', pt: 'Pesquisador de pós-doutorado @ Universidade Federal Fluminense, Rio de Janeiro' }, country: 'br' },
-  { when: '2014-02', what: { en: 'Scientific Researcher (AI Innovation) @ Dell EMC, Rio de Janeiro', es: 'Investigador científico (Innovación en IA) @ Dell EMC, Río de Janeiro', pt: 'Pesquisador científico (Inovação em IA) @ Dell EMC, Rio de Janeiro' }, country: 'br' },
-  { when: '2004-09', what: { en: 'Head of the Bioinformatics R&D Group @ UCI, Havana', es: 'Jefe del Grupo de I+D en Bioinformática @ UCI, La Habana', pt: 'Chefe do Grupo de P&D em Bioinformática @ UCI, Havana' }, country: 'cu' },
-  { when: '2003-09', what: { en: 'Project Manager, BioSyS @ UCI', es: 'Jefe de proyecto, BioSyS @ UCI', pt: 'Gerente de projeto, BioSyS @ UCI' }, country: 'cu' },
-  { when: '2002-09', what: { en: 'Assistant Professor @ UCI', es: 'Profesor asistente @ UCI', pt: 'Professor assistente @ UCI' }, country: 'cu' },
+  { when: { en: '2022–present', es: '2022–actual', pt: '2022–atual' }, what: { en: 'Senior Data Scientist @ Procter & Gamble, Panama', es: 'Senior Data Scientist @ Procter & Gamble, Panamá', pt: 'Senior Data Scientist @ Procter & Gamble, Panamá' }, country: 'pa' },
+  { when: '2019–2022', what: { en: 'Data Scientist @ Procter & Gamble', es: 'Data Scientist @ Procter & Gamble', pt: 'Data Scientist @ Procter & Gamble' }, country: 'pa' },
+  { when: '2018–2019', what: { en: 'Postdoctoral Researcher @ Universidade Federal Fluminense, Rio de Janeiro', es: 'Investigador posdoctoral @ Universidade Federal Fluminense, Río de Janeiro', pt: 'Pesquisador de pós-doutorado @ Universidade Federal Fluminense, Rio de Janeiro' }, country: 'br' },
+  { when: '2014–2015', what: { en: 'Scientific Researcher (AI Innovation) @ Dell EMC, Rio de Janeiro', es: 'Investigador científico (Innovación en IA) @ Dell EMC, Río de Janeiro', pt: 'Pesquisador científico (Inovação em IA) @ Dell EMC, Rio de Janeiro' }, country: 'br' },
+  { when: '2004–2010', what: { en: 'Head of the Bioinformatics R&D Group @ UCI, Havana', es: 'Jefe del Grupo de I+D en Bioinformática @ UCI, La Habana', pt: 'Chefe do Grupo de P&D em Bioinformática @ UCI, Havana' }, country: 'cu' },
+  { when: '2003–2012', what: { en: 'Project Manager, BioSyS @ UCI', es: 'Jefe de proyecto, BioSyS @ UCI', pt: 'Gerente de projeto, BioSyS @ UCI' }, country: 'cu' },
+  { when: '2002–2010', what: { en: 'Assistant Professor @ UCI', es: 'Profesor asistente @ UCI', pt: 'Professor assistente @ UCI' }, country: 'cu' },
 ];
 
 export const education: LogItem[] = [

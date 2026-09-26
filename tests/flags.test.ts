@@ -28,6 +28,11 @@ test('spoken languages: Spanish native, English and Portuguese professional', ()
 
 const _typecheck: FlagCode[] = ['cu', 'pa', 'br', 'es', 'us'];
 
-test('every job and degree has its dates', () => {
-  for (const item of [...history, ...education]) assert.ok(item.when.trim(), `missing dates: ${item.what.en}`);
+test('every job and degree has a start and an end (or "present") in every language', () => {
+  for (const item of [...history, ...education]) {
+    for (const lang of ['en', 'es', 'pt'] as const) {
+      const when = typeof item.when === 'string' ? item.when : item.when[lang];
+      assert.match(when, /^\d{4}–(\d{4}|present|actual|atual)$/, `${lang} dates for: ${item.what.en}`);
+    }
+  }
 });
