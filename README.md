@@ -34,11 +34,7 @@ Frontmatter (`date` and `tags` must be identical in the three files):
 
 The build fails if a language file is missing, if `date`/`tags` differ, or if a folder/tag isn't kebab-case.
 
-Workflow:
-
-1. Write `en.md` (or start in `es.md` if that's more natural).
-2. Ask Claude Code: *translate post `<slug>`*. Review the diff.
-3. `git commit` and `git push` to `master`. GitHub Actions publishes in a couple of minutes.
+Workflow: ask your coding agent to *add this content* (pasted text, a LinkedIn post, Markdown or HTML). It follows [`.claude/skills/adding-blog-content/SKILL.md`](.claude/skills/adding-blog-content/SKILL.md): writes `en.md`, translates ES/PT, runs the checks, shows you the result and publishes through a PR only after your OK. GitHub Actions deploys `master` in a couple of minutes.
 
 ## Math
 
