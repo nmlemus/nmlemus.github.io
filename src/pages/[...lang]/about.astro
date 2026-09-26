@@ -31,11 +31,11 @@ const { lang } = Astro.props as { lang: Lang };
     <div class="pane">
       <Prompt dir="~" bar={false}>
         <Fragment slot="cmd">git log <span class="arg">--pretty='%ad %s' --date=short</span></Fragment>
-        <ul class="log">{history.map((i) => <li><span class="when">{i.when}</span><span class="what"><Flag code={i.country} lang={lang} /><span>{i.what[lang]}</span></span></li>)}</ul>
+        <ul class="log">{history.map((i) => <li><span class="when">{typeof i.when === 'string' ? i.when : i.when[lang]}</span><span class="what"><Flag code={i.country} lang={lang} /><span>{i.what[lang]}</span></span></li>)}</ul>
       </Prompt>
       <Prompt dir="~" bar={false}>
         <Fragment slot="cmd">ls <span class="arg">education/</span></Fragment>
-        <ul class="log">{education.map((i) => <li><span class="when">{i.when}</span><span class="what"><Flag code={i.country} lang={lang} /><span>{i.what[lang]}</span></span></li>)}</ul>
+        <ul class="log">{education.map((i) => <li><span class="when">{typeof i.when === 'string' ? i.when : i.when[lang]}</span><span class="what"><Flag code={i.country} lang={lang} /><span>{i.what[lang]}</span></span></li>)}</ul>
       </Prompt>
     </div>
   </div>
@@ -45,7 +45,7 @@ const { lang } = Astro.props as { lang: Lang };
   @media (min-width: 1000px) { .panes { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 56px; } }
   .panes .md { margin-top: 0; }
   .log { list-style: none; margin: 0; padding: 0; }
-  .log li { display: grid; grid-template-columns: 11ch minmax(0, 1fr); column-gap: 2ch; padding: 3px 0; overflow-wrap: anywhere; }
+  .log li { display: grid; grid-template-columns: 12ch minmax(0, 1fr); column-gap: 2ch; padding: 3px 0; overflow-wrap: anywhere; }
   .when { color: var(--key); }
   /* Wrapped lines align with the text, not under the flag. */
   .what { display: flex; align-items: flex-start; }
