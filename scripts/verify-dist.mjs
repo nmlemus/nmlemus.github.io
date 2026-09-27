@@ -18,6 +18,7 @@ for (const file of walk(DIST).filter((f) => f.endsWith('.html'))) {
   const rel = '/' + relative(DIST, file).split(sep).join('/');
   problems.push(...checkPage({ file: rel, html: readFileSync(file, 'utf8'), site: SITE, exists, isArticle: ARTICLE.test(rel) }));
 }
+if (!read('index.html').includes('name="google-site-verification"')) problems.push('/index.html: missing Search Console verification meta tag');
 problems.push(...checkFeeds({ en: read('rss.xml'), es: read('es/rss.xml'), pt: read('pt/rss.xml') }));
 
 if (problems.length) {

@@ -31,6 +31,8 @@ const abs = (l: Lang) => new URL(localePath(l, path), site).href;
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="author" content="Noel Moreno Lemus" />
+    <!-- Google Search Console ownership: removing it unverifies the site. -->
+    <meta name="google-site-verification" content="AVg4J0fUw9dIYUudEtx8OJbmj9-L2brubDJFa1uLNlY" />
     {noindex && <meta name="robots" content="noindex" />}
     {!noindex && <link rel="canonical" href={abs(lang)} />}
     {!noindex && LANGS.map((l) => <link rel="alternate" hreflang={HTML_LANG[l]} href={abs(l)} />)}
