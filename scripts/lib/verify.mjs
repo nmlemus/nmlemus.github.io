@@ -31,6 +31,8 @@ export function checkPage({ file, html, site, exists, isArticle }) {
     .filter((href) => { const p = toDistPath(href, site); return p !== null && !exists(p); })
     .map((href) => `${file}: broken link ${href}`);
   if (html.includes('katex-error')) problems.push(`${file}: KaTeX error (invalid LaTeX)`);
+  if (/<script[^>]+src="https:\/\/www\.googletagmanager\.com/.test(html)) problems.push(`${file}: Google Analytics loaded without consent`);
+  if (!html.includes('data-analytics-notice')) problems.push(`${file}: missing analytics consent notice`);
   if (!isArticle) return problems;
   if (!canonical) problems.push(`${file}: missing canonical`);
   const langs = alternates.map((a) => a.hreflang).sort().join();

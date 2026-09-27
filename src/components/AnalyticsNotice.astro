@@ -1,0 +1,31 @@
+---
+import { t } from '../i18n/ui.ts';
+import type { Lang } from '../i18n/langs.ts';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+---
+<div class="consent" data-analytics-notice role="region" aria-label={t(lang, 'analytics.label')} hidden>
+  <p><span class="q" aria-hidden="true">?</span> {t(lang, 'analytics.question')}</p>
+  <div class="actions">
+    <button type="button" data-accept>[{t(lang, 'analytics.accept')}]</button>
+    <button type="button" data-decline>[{t(lang, 'analytics.decline')}]</button>
+  </div>
+</div>
+<script>
+  import { initAnalytics } from '../scripts/analytics.ts';
+  initAnalytics();
+</script>
+<style>
+  .consent { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 10px 16px; background: var(--bg-2); color: var(--text); border-top: 1px solid var(--line); font: 13px/1.5 var(--mono); }
+  .consent[hidden] { display: none; }
+  .consent p { margin: 0; flex: 1 1 280px; }
+  .q { color: var(--key); font-weight: 700; }
+  .actions { display: flex; gap: 12px; }
+  /* Accept and decline look the same: neither is the "easy" choice. */
+  .consent button { font: inherit; background: none; border: 1px solid var(--line); color: var(--strong); padding: 4px 10px; cursor: pointer; }
+  .consent button:hover, .consent button:focus-visible { border-color: var(--accent); }
+  :global(:root[data-mode='reader']) .consent { font-family: var(--serif); font-size: 15px; }
+</style>
